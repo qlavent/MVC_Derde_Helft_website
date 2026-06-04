@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0a0a;
+  --fg: #ffffff;
+  --surface: #1a1a1a;
+  --muted: #2a2a2a;
+  --border: #2a2a2a;
+  --sand: #C8B99A;
+  --sand-fg: #0a0a0a;
+  --olive: #6B7045;
+  --subtle: #666666;
+  --subtle2: #444444;
+}
+
+[data-theme="light"] {
+  --bg: #F5F0E8;
+  --fg: #0a0a0a;
+  --surface: #ffffff;
+  --muted: #EDE8DE;
+  --border: #DDD8CE;
+  --sand: #8B7355;
+  --sand-fg: #ffffff;
+  --olive: #5A6035;
+  --subtle: #888888;
+  --subtle2: #aaaaaa;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Safe area for bottom nav on iOS */
+.pb-safe {
+  padding-bottom: max(5rem, env(safe-area-inset-bottom));
+}
+
+/* Typography improvements */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Smooth color transitions for theme */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.1s ease;
+}
+
+/* Input text color follows theme */
+input, textarea, select {
+  color: var(--fg);
+  caret-color: var(--fg);
+  color-scheme: dark;
+}
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color-scheme: light;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--subtle);
+}
+
+/* Better select styling */
+select option {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+/* react-mobile-picker theme */
+.react-mobile-picker { background: transparent !important; }
+.react-mobile-picker-column { color: var(--fg) !important; }
+.react-mobile-picker-item { color: var(--subtle) !important; font-size: 1rem !important; }
+.react-mobile-picker-item-selected { color: var(--fg) !important; font-weight: 700 !important; font-size: 1.1rem !important; }
+.react-mobile-picker-highlight {
+  background: var(--muted) !important;
+  border: none !important;
+}
+
+/* react-datepicker theme */
+.react-datepicker {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--fg) !important;
+  font-family: inherit !important;
+  border-radius: 1rem !important;
+}
+.react-datepicker__header {
+  background: var(--muted) !important;
+  border-color: var(--border) !important;
+  border-radius: 1rem 1rem 0 0 !important;
+}
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker-time__header {
+  color: var(--fg) !important;
+}
+.react-datepicker__day {
+  color: var(--fg) !important;
+  border-radius: 0.5rem !important;
+}
+.react-datepicker__day:hover {
+  background: var(--muted) !important;
+}
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--sand) !important;
+  color: var(--sand-fg) !important;
+}
+.react-datepicker__day--outside-month { opacity: 0.3; }
+.react-datepicker__time-container {
+  border-color: var(--border) !important;
+}
+.react-datepicker__time-box,
+.react-datepicker__time {
+  background: var(--surface) !important;
+}
+.react-datepicker__time-list-item {
+  color: var(--fg) !important;
+}
+.react-datepicker__time-list-item:hover {
+  background: var(--muted) !important;
+}
+.react-datepicker__time-list-item--selected {
+  background: var(--sand) !important;
+  color: var(--sand-fg) !important;
+}
+.react-datepicker__navigation-icon::before {
+  border-color: var(--subtle) !important;
+}
+.react-datepicker-popper { z-index: 60 !important; }
+
+/* Improved scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
