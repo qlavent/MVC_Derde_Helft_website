@@ -75,7 +75,8 @@ export default function SpelersPage() {
       matchIds = seasonMatches?.map((m) => m.id) ?? []
     }
 
-    const applyFilter = (q: ReturnType<typeof supabase.from>, ids: string[] | null) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const applyFilter = (q: any, ids: string[] | null) =>
       ids ? q.in('match_id', ids) : q
 
     const [
@@ -92,15 +93,16 @@ export default function SpelersPage() {
       applyFilter(supabase.from('motm').select('player_id, match_id'), matchIds),
     ])
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const computed: PlayerStats[] = players.map((p) => ({
       player: p,
-      goals: (goals ?? []).filter((g) => g.player_id === p.id).length,
-      corner_goals: (goals ?? []).filter((g) => g.player_id === p.id && g.is_corner_goal).length,
-      corners_taken: (cornersTaken ?? []).filter((c) => c.taker_id === p.id).length,
-      corners_headed: (cornersHeaded ?? []).filter((c) => c.header_id === p.id).length,
-      yellow_cards: (cards ?? []).filter((c) => c.player_id === p.id && c.card_type === 'yellow').length,
-      red_cards: (cards ?? []).filter((c) => c.player_id === p.id && c.card_type === 'red').length,
-      motm_count: (motms ?? []).filter((m) => m.player_id === p.id).length,
+      goals: (goals ?? []).filter((g: any) => g.player_id === p.id).length,
+      corner_goals: (goals ?? []).filter((g: any) => g.player_id === p.id && g.is_corner_goal).length,
+      corners_taken: (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id).length,
+      corners_headed: (cornersHeaded ?? []).filter((c: any) => c.header_id === p.id).length,
+      yellow_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'yellow').length,
+      red_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'red').length,
+      motm_count: (motms ?? []).filter((m: any) => m.player_id === p.id).length,
     }))
 
     setStats(computed.sort((a, b) => b.goals - a.goals || b.motm_count - a.motm_count))
