@@ -34,11 +34,12 @@ async function getRbfaMatches(): Promise<Match[]> {
 async function getData() {
   const now = new Date().toISOString()
 
-  const [{ data: liveMatches }, { data: recentMatches }, { data: upcomingMatches }, { data: upcomingEvents }] = await Promise.all([
+  const [{ data: liveMatches }, { data: recentMatches }, { data: upcomingMatches }, { data: upcomingEvents }, { data: latestKitCarrier }] = await Promise.all([
     supabase.from('matches').select('*').eq('state', 'live').limit(1),
     supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
     supabase.from('matches').select('*').eq('state', 'upcoming').order('start_time', { ascending: true }).limit(3),
     supabase.from('calendar_events').select('*').gte('start_time', now).order('start_time', { ascending: true }).limit(5),
+    supabase.from('kit_carriers').select('*, player:players(first_name, last_name), match:matches(start_time)').order('created_at', { ascending: false }).limit(1).single(),
   ])
 
   // If Supabase is empty, fall back to RBFA API directly
@@ -53,7 +54,7 @@ async function getData() {
     }
   }
 
-  return { liveMatches, recentMatches, upcomingMatches, upcomingEvents }
+  return { liveMatches, recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier }
 }
 
 function ScoreBadge({ match }: { match: Match }) {
@@ -68,7 +69,7 @@ function ScoreBadge({ match }: { match: Match }) {
 }
 
 export default async function HomePage() {
-  const { liveMatches, recentMatches, upcomingMatches, upcomingEvents } = await getData()
+  const { liveMatches, recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier } = await getData()
   const liveMatch = liveMatches?.[0]
 
   return (
@@ -88,6 +89,23 @@ export default async function HomePage() {
           <ThemeToggle />
         </div>
       </div>
+
+      {/* Kit carrier banner */}
+      {latestKitCarrier?.player && (
+        <div className="mx-4 mb-3">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3 flex items-center gap-3">
+            <span className="text-xl">🎽</span>
+            <div>
+              <p className="text-xs text-[var(--subtle)]">Truitjes</p>
+              <p className="text-sm font-bold">
+                {(latestKitCarrier.player as { first_name: string; last_name: string }).first_name}{' '}
+                {(latestKitCarrier.player as { first_name: string; last_name: string }).last_name}{' '}
+                heeft de truitjes
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live match banner */}
       {liveMatch && (
@@ -173,19 +191,32 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Instagram teaser */}
+      {/* Quick links: Instagram + Wiel */}
       <section className="px-4 mb-6">
-        <Link href="/instagram">
-          <div className="bg-gradient-to-r from-[var(--surface)] to-[var(--olive)]/20 rounded-2xl p-4 border border-[var(--olive)]/30 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-orange-400 flex items-center justify-center">
-              <span className="text-white text-lg">📸</span>
+        <div className="flex gap-3">
+          <Link href="/instagram" className="flex-1">
+            <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] flex items-center gap-3 hover:border-[var(--sand)] transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-orange-400 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-base">📸</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Instagram</p>
+                <p className="text-xs text-[var(--subtle)]">@mvc.den.derde.helft</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold">@mvc.den.derde.helft</p>
-              <p className="text-xs text-[var(--subtle)]">Bekijk onze Instagram</p>
+          </Link>
+          <Link href="/wiel" className="flex-1">
+            <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] flex items-center gap-3 hover:border-[var(--sand)] transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+                <span className="text-base">🎡</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Wiel</p>
+                <p className="text-xs text-[var(--subtle)]">Draai het wiel</p>
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        </div>
       </section>
     </div>
   )
