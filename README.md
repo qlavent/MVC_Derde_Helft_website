@@ -1,2 +1,4 @@
 # MVC_Derde_Helft_website
-Website for MVC den Derde Helft minivoetbalclub>
+Website for MVC den Derde Helft minivoetbalclub
+
+V0.0
