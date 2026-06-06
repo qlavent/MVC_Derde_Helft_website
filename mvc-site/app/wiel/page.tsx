@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Plus, X, RotateCcw } from 'lucide-react'
 
 const STORAGE_KEY = 'mvc-wiel-items'
-const COLORS = ['#C8B99A', '#6B7045', '#8B9A5A', '#D4C4A0', '#5A6B35', '#E8D4B0', '#4A5B25', '#B8A88A']
+const COLORS = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#54A0FF','#5F27CD','#1DD1A1','#FF9FF3','#EE5A24','#0ABDE3','#10AC84','#EE5A24']
 
 export default function WielPage() {
   const [items, setItems] = useState<string[]>([])
@@ -191,10 +191,10 @@ export default function WielPage() {
         </div>
         {items.length > 0 && (
           <button
-            onClick={() => { setItems([]); setResult(null) }}
+            onClick={() => { setItems(['Taak 1', 'Taak 2', 'Taak 3']); setResult(null) }}
             className="mt-4 w-full text-xs text-[var(--subtle2)] flex items-center justify-center gap-1 py-3"
           >
-            <RotateCcw size={12} /> Alles wissen
+            <RotateCcw size={12} /> Herstel standaard
           </button>
         )}
       </div>
