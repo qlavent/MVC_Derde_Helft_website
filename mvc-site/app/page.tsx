@@ -194,17 +194,17 @@ export default async function HomePage() {
       {/* Quick links: Instagram + Wiel */}
       <section className="px-4 mb-6">
         <div className="flex gap-3">
-          <Link href="/instagram" className="flex-1">
+          <a href="https://www.instagram.com/mvc.den.derde.helft" target="_blank" rel="noopener noreferrer" className="flex-1">
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] flex items-center gap-3 hover:border-[var(--sand)] transition-colors">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-orange-400 flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-base">📸</span>
               </div>
               <div>
                 <p className="text-sm font-semibold">Instagram</p>
-                <p className="text-xs text-[var(--subtle)]">@mvc.den.derde.helft</p>
+                <p className="text-xs" style={{ color: 'var(--subtle)' }}>Volg ons</p>
               </div>
             </div>
-          </Link>
+          </a>
           <Link href="/wiel" className="flex-1">
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] flex items-center gap-3 hover:border-[var(--sand)] transition-colors">
               <div className="w-9 h-9 rounded-xl bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
