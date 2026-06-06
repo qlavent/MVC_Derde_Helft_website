@@ -8,49 +8,35 @@ import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import Picker from 'react-mobile-picker'
 import TimeSelect from '@/components/TimeSelect'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { nl as nlLocale } from 'date-fns/locale'
 
 function DateSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  // value is YYYY-MM-DD or ''
-  const parts = value ? value.split('-') : ['', '', '']
-  const year = parts[0] || ''
-  const month = parts[1] || ''
-  const day = parts[2] || ''
-
-  function update(y: string, mo: string, d: string) {
-    if (y && mo && d) onChange(`${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`)
-    else onChange('')
-  }
-
-  const sel = "bg-[var(--muted)] border border-[var(--border)] rounded-xl px-2 py-2.5 text-[var(--fg)] text-sm focus:outline-none cursor-pointer"
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({length: 5}, (_, i) => String(currentYear + i - 1))
-
+  const selected = value ? new Date(value + 'T12:00:00') : null
   return (
-    <div className="flex gap-1.5 flex-1">
-      <select value={day} onChange={(e) => update(year, month, e.target.value)} className={`${sel} w-16`}>
-        <option value="">dd</option>
-        {Array.from({length:31},(_,i)=>i+1).map(d=>(
-          <option key={d} value={String(d).padStart(2,'0')}>{String(d).padStart(2,'0')}</option>
-        ))}
-      </select>
-      <select value={month} onChange={(e) => update(year, e.target.value, day)} className={`${sel} w-20`}>
-        <option value="">mm</option>
-        {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,i)=>(
-          <option key={m} value={m}>{['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][i]}</option>
-        ))}
-      </select>
-      <select value={year} onChange={(e) => update(e.target.value, month, day)} className={`${sel} flex-1`}>
-        <option value="">jaar</option>
-        {years.map(y=><option key={y} value={y}>{y}</option>)}
-      </select>
-    </div>
+    <DatePicker
+      selected={selected}
+      onChange={(date: Date | null) => {
+        if (date) {
+          const y = date.getFullYear()
+          const m = String(date.getMonth() + 1).padStart(2, '0')
+          const d = String(date.getDate()).padStart(2, '0')
+          onChange(`${y}-${m}-${d}`)
+        } else {
+          onChange('')
+        }
+      }}
+      dateFormat="dd/MM/yyyy"
+      locale={nlLocale}
+      placeholderText="dd/mm/jjjj"
+      className="flex-1 bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none w-full"
+      wrapperClassName="flex-1"
+      popperPlacement="bottom-start"
+    />
   )
 }
-
-const HOURS = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'))
-const MINUTES = ['00','05','10','15','20','25','30','35','40','45','50','55']
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
