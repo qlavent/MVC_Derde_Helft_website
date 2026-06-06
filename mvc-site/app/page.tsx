@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import ThemeToggle from '@/components/ThemeToggle'
+import LiveBanner from '@/components/LiveBanner'
 
 export const revalidate = 30
 
@@ -34,8 +35,7 @@ async function getRbfaMatches(): Promise<Match[]> {
 async function getData() {
   const now = new Date().toISOString()
 
-  const [{ data: liveMatches }, { data: recentMatches }, { data: upcomingMatches }, { data: upcomingEvents }, { data: latestKitCarrier }] = await Promise.all([
-    supabase.from('matches').select('*').eq('state', 'live').limit(1),
+  const [{ data: recentMatches }, { data: upcomingMatches }, { data: upcomingEvents }, { data: latestKitCarrier }] = await Promise.all([
     supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
     supabase.from('matches').select('*').eq('state', 'upcoming').order('start_time', { ascending: true }).limit(3),
     supabase.from('calendar_events').select('*').gte('start_time', now).order('start_time', { ascending: true }).limit(5),
@@ -43,34 +43,23 @@ async function getData() {
   ])
 
   // If Supabase is empty, fall back to RBFA API directly
-  const hasSupabaseData = (liveMatches?.length ?? 0) + (recentMatches?.length ?? 0) + (upcomingMatches?.length ?? 0) > 0
+  const hasSupabaseData = (recentMatches?.length ?? 0) + (upcomingMatches?.length ?? 0) > 0
   if (!hasSupabaseData) {
     const rbfa = await getRbfaMatches()
     return {
-      liveMatches: rbfa.filter((m) => m.state === 'live').slice(0, 1),
       recentMatches: rbfa.filter((m) => m.state === 'finished').reverse().slice(0, 5),
       upcomingMatches: rbfa.filter((m) => m.state === 'upcoming').slice(0, 3),
       upcomingEvents: upcomingEvents,
+      latestKitCarrier: null,
     }
   }
 
-  return { liveMatches, recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier }
+  return { recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier }
 }
 
-function ScoreBadge({ match }: { match: Match }) {
-  const home = match.manual_home_score ?? match.rbfa_home_score
-  const away = match.manual_away_score ?? match.rbfa_away_score
-  if (home === null || away === null) return null
-  return (
-    <span className="bg-[var(--muted)] rounded-lg px-2 py-0.5 text-sm font-bold tabular-nums">
-      {home} — {away}
-    </span>
-  )
-}
 
 export default async function HomePage() {
-  const { liveMatches, recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier } = await getData()
-  const liveMatch = liveMatches?.[0]
+  const { recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier } = await getData()
 
   return (
     <div className="min-h-screen">
@@ -107,24 +96,8 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Live match banner */}
-      {liveMatch && (
-        <div className="mx-4 mb-4">
-          <Link href={`/wedstrijden/${liveMatch.id}`}>
-            <div className="bg-gradient-to-r from-red-900/40 to-[var(--surface)] border border-red-500/30 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-                <span className="text-xs text-red-400 font-semibold uppercase tracking-wide">Live</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold flex-1">{liveMatch.home_team_name}</span>
-                <ScoreBadge match={liveMatch} />
-                <span className="text-sm font-semibold flex-1 text-right">{liveMatch.away_team_name}</span>
-              </div>
-            </div>
-          </Link>
-        </div>
-      )}
+      {/* Live match banner — client component, auto-refreshes every 30s */}
+      <LiveBanner />
 
       {/* Upcoming */}
       {(upcomingMatches?.length || 0) + (upcomingEvents?.length || 0) > 0 && (
@@ -178,7 +151,11 @@ export default async function HomePage() {
                 <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm flex-1 truncate">{m.home_team_name}</span>
-                    <ScoreBadge match={m} />
+                    {(m.manual_home_score ?? m.rbfa_home_score) !== null && (
+                      <span className="bg-[var(--muted)] rounded-lg px-2 py-0.5 text-sm font-bold tabular-nums">
+                        {m.manual_home_score ?? m.rbfa_home_score} — {m.manual_away_score ?? m.rbfa_away_score}
+                      </span>
+                    )}
                     <span className="text-sm flex-1 text-right truncate">{m.away_team_name}</span>
                   </div>
                   <p className="text-xs text-[var(--subtle2)] mt-1 text-center">
