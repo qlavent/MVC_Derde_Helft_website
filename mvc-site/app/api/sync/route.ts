@@ -62,7 +62,15 @@ export async function POST() {
           home_team_rbfa_id: m.homeTeam.id,
           away_team_rbfa_id: m.awayTeam.id,
           start_time: m.startTime,
-          state: (m.state === 'finished' || (m.outcome != null) || new Date(m.startTime) < new Date()) ? 'finished' : m.state === 'live' ? 'live' : 'upcoming',
+          state: (() => {
+            if (m.state === 'finished' || m.outcome != null) return 'finished'
+            const start = new Date(m.startTime)
+            const now = new Date()
+            const diffMs = now.getTime() - start.getTime()
+            if (diffMs > 3600000) return 'finished'
+            if (diffMs > 0) return 'live'
+            return 'upcoming'
+          })(),
           series_name: m.series?.name ?? null,
           is_home_game: isHome,
           rbfa_home_score: m.outcome?.homeTeamGoals ?? null,
