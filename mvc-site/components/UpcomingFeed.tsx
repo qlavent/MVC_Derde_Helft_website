@@ -61,7 +61,7 @@ export default function UpcomingFeed() {
             </div>
           </Link>
         ) : (
-          <Link key={`e-${item.data.id}`} href="/kalender">
+          <Link key={`e-${item.data.id}`} href={`/kalender/${item.data.id}`}>
             <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
               <div className="flex items-center gap-2">
                 <span className="text-base flex-shrink-0">

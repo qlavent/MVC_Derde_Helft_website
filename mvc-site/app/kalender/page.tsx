@@ -7,78 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMont
 import { nl } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
-import Picker from 'react-mobile-picker'
-
-const HOURS = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'))
-const MINUTES = ['00','05','10','15','20','25','30','35','40','45','50','55']
-
-function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const h = value ? value.split(':')[0] : '08'
-  const m = value ? value.split(':')[1] : '00'
-
-  function stepHour(dir: 1 | -1) {
-    const idx = Math.max(0, Math.min(23, parseInt(h) + dir))
-    onChange(`${String(idx).padStart(2,'0')}:${m}`)
-  }
-  function stepMinute(dir: 1 | -1) {
-    const idx = Math.max(0, Math.min(MINUTES.length - 1, MINUTES.indexOf(m) + dir))
-    onChange(`${h}:${MINUTES[idx]}`)
-  }
-
-  const btnCls = "w-full flex items-center justify-center py-1 text-[var(--subtle)] hover:text-[var(--sand)] active:scale-95 transition-all text-lg leading-none select-none"
-
-  return (
-    <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl overflow-hidden" style={{width: 120}}>
-      {/* Up buttons */}
-      <div className="flex border-b border-[var(--border)]">
-        <button type="button" onClick={() => stepHour(1)} className={`${btnCls} border-r border-[var(--border)]`}>▲</button>
-        <button type="button" onClick={() => stepMinute(1)} className={btnCls}>▲</button>
-      </div>
-      {/* Selected time display */}
-      <div className="flex items-center justify-center gap-0.5 py-1 border-b border-[var(--border)]">
-        <span className="text-sm font-black text-[var(--sand)]">{h}</span>
-        <span className="text-sm font-black text-[var(--sand)]">:</span>
-        <span className="text-sm font-black text-[var(--sand)]">{m}</span>
-      </div>
-      {/* Picker with absolute border overlay on selected row */}
-      <div className="relative">
-        <Picker
-          value={{ hour: h, minute: m }}
-          onChange={(val) => onChange(`${val.hour}:${val.minute}`)}
-          height={120}
-          itemHeight={40}
-          wheelMode="normal"
-        >
-          <Picker.Column name="hour">
-            {HOURS.map(v => (
-              <Picker.Item key={v} value={v}>
-                {({ selected }: { selected: boolean }) => (
-                  <span style={{ fontWeight: selected ? 800 : 400, fontSize: selected ? 17 : 14, color: selected ? 'var(--fg)' : 'var(--subtle)' }}>{v}</span>
-                )}
-              </Picker.Item>
-            ))}
-          </Picker.Column>
-          <Picker.Column name="minute">
-            {MINUTES.map(v => (
-              <Picker.Item key={v} value={v}>
-                {({ selected }: { selected: boolean }) => (
-                  <span style={{ fontWeight: selected ? 800 : 400, fontSize: selected ? 17 : 14, color: selected ? 'var(--fg)' : 'var(--subtle)' }}>{v}</span>
-                )}
-              </Picker.Item>
-            ))}
-          </Picker.Column>
-        </Picker>
-        {/* Border overlay on middle (selected) row */}
-        <div className="absolute left-0 right-0 pointer-events-none" style={{ top: 40, height: 40, borderTop: '2px solid var(--sand)', borderBottom: '2px solid var(--sand)' }} />
-      </div>
-      {/* Down buttons */}
-      <div className="flex border-t border-[var(--border)]">
-        <button type="button" onClick={() => stepHour(-1)} className={`${btnCls} border-r border-[var(--border)]`}>▼</button>
-        <button type="button" onClick={() => stepMinute(-1)} className={btnCls}>▼</button>
-      </div>
-    </div>
-  )
-}
+import TimeSelect from '@/components/TimeSelect'
 
 export default function KalenderPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -248,18 +177,22 @@ export default function KalenderPage() {
               </div>
             ))}
             {events.map((e) => (
-              <div key={e.id} className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--olive)]/20">
+              <Link key={e.id} href={`/kalender/${e.id}`}>
+              <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--olive)]/20 hover:border-[var(--olive)] transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-xs text-[var(--olive)] font-semibold mb-0.5">📅 {e.event_type}</p>
                     <p className="text-sm font-semibold">{e.title}</p>
                     <p className="text-xs text-[var(--subtle)]">{format(new Date(e.start_time), 'EEEE d MMM • HH:mm', { locale: nl })}</p>
+                    {e.end_time && <p className="text-xs text-[var(--subtle)]">tot {format(new Date(e.end_time), 'HH:mm', { locale: nl })}</p>}
                     {e.location && <p className="text-xs text-[var(--subtle2)]">📍 {e.location}</p>}
+                    {e.description && <p className="text-xs text-[var(--subtle2)] mt-1 line-clamp-2">{e.description}</p>}
                   </div>
                   {e.include_in_ical && (
                     <a
                       href={`/api/calendar.ics?event=${e.id}`}
                       download
+                      onClick={(ev) => ev.stopPropagation()}
                       className="text-[10px] text-[var(--subtle)] border border-[var(--border)] rounded-lg px-2 py-1 ml-2 flex-shrink-0"
                     >
                       + Agenda
@@ -267,6 +200,7 @@ export default function KalenderPage() {
                   )}
                 </div>
               </div>
+              </Link>
             ))}
           </div>
         )}
