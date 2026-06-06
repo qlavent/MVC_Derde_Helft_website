@@ -314,7 +314,7 @@ export default function KalenderPage() {
                 <span className="text-sm">Opnemen in agenda sync</span>
               </label>
               <button
-                disabled={!form.title || !form.start_time}
+                disabled={!form.title || !form.start_date}
                 onClick={addEvent}
                 className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold disabled:opacity-40"
               >
