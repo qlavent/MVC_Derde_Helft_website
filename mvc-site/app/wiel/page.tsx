@@ -191,10 +191,10 @@ export default function WielPage() {
         </div>
         {items.length > 0 && (
           <button
-            onClick={() => { setItems(['Taak 1', 'Taak 2', 'Taak 3']); setResult(null) }}
+            onClick={() => { setItems([]); setResult(null) }}
             className="mt-4 w-full text-xs text-[var(--subtle2)] flex items-center justify-center gap-1 py-3"
           >
-            <RotateCcw size={12} /> Herstel standaard
+            <RotateCcw size={12} /> Alles wissen
           </button>
         )}
       </div>
