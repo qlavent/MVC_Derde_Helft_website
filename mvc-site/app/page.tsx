@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import ThemeToggle from '@/components/ThemeToggle'
 import LiveBanner from '@/components/LiveBanner'
+import UpcomingFeed from '@/components/UpcomingFeed'
 
 export const revalidate = 30
 
@@ -43,31 +44,27 @@ async function getRbfaMatches(): Promise<Match[]> {
 async function getData() {
   const now = new Date().toISOString()
 
-  const [{ data: recentMatches }, { data: upcomingMatches }, { data: upcomingEvents }, { data: latestKitCarrier }] = await Promise.all([
+  const [{ data: recentMatches }, { data: latestKitCarrier }] = await Promise.all([
     supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
-    supabase.from('matches').select('*').eq('state', 'upcoming').order('start_time', { ascending: true }).limit(3),
-    supabase.from('calendar_events').select('*').gte('start_time', now).order('start_time', { ascending: true }).limit(5),
     supabase.from('kit_carriers').select('*, player:players(first_name, last_name), match:matches(start_time)').order('created_at', { ascending: false }).limit(1).single(),
   ])
 
   // If Supabase is empty, fall back to RBFA API directly
-  const hasSupabaseData = (recentMatches?.length ?? 0) + (upcomingMatches?.length ?? 0) > 0
+  const hasSupabaseData = (recentMatches?.length ?? 0) > 0
   if (!hasSupabaseData) {
     const rbfa = await getRbfaMatches()
     return {
       recentMatches: rbfa.filter((m) => m.state === 'finished').reverse().slice(0, 5),
-      upcomingMatches: rbfa.filter((m) => m.state === 'upcoming').slice(0, 3),
-      upcomingEvents: upcomingEvents,
       latestKitCarrier: null,
     }
   }
 
-  return { recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier }
+  return { recentMatches, latestKitCarrier }
 }
 
 
 export default async function HomePage() {
-  const { recentMatches, upcomingMatches, upcomingEvents, latestKitCarrier } = await getData()
+  const { recentMatches, latestKitCarrier } = await getData()
 
   return (
     <div className="min-h-screen">
@@ -107,50 +104,8 @@ export default async function HomePage() {
       {/* Live match banner — client component, auto-refreshes every 30s */}
       <LiveBanner />
 
-      {/* Upcoming — matches + events merged and sorted by time */}
-      {(() => {
-        const now = new Date()
-        const matchItems = (upcomingMatches ?? []).map((m) => ({ type: 'match' as const, time: new Date(m.start_time), data: m }))
-        const eventItems = (upcomingEvents ?? []).filter((e) => new Date(e.start_time) > now).map((e) => ({ type: 'event' as const, time: new Date(e.start_time), data: e }))
-        const merged = [...matchItems, ...eventItems].sort((a, b) => a.time.getTime() - b.time.getTime())
-        if (merged.length === 0) return null
-        return (
-          <section className="px-4 mb-6">
-            <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-3">Aankomend</h2>
-            <div className="space-y-2">
-              {merged.map((item) => item.type === 'match' ? (
-                <Link key={item.data.id} href={`/wedstrijden/${item.data.id}`}>
-                  <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold">{item.data.home_team_name} vs {item.data.away_team_name}</p>
-                        <p className="text-xs text-[var(--subtle)] mt-0.5">
-                          {format(item.time, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
-                        </p>
-                      </div>
-                      <span className="text-[var(--sand)] text-xs">⚽</span>
-                    </div>
-                  </div>
-                </Link>
-              ) : (
-                <Link key={item.data.id} href="/kalender">
-                  <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold">{item.data.title}</p>
-                        <p className="text-xs text-[var(--subtle)] mt-0.5">
-                          {format(item.time, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
-                        </p>
-                      </div>
-                      <span className="text-[var(--olive)] text-xs">📅</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )
-      })()}
+      {/* Upcoming — client component, auto-refreshes every 30s */}
+      <UpcomingFeed />
 
       {/* Recent results */}
       {(recentMatches?.length ?? 0) > 0 && (
