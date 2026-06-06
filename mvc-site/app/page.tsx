@@ -107,44 +107,50 @@ export default async function HomePage() {
       {/* Live match banner — client component, auto-refreshes every 30s */}
       <LiveBanner />
 
-      {/* Upcoming */}
-      {(upcomingMatches?.length || 0) + (upcomingEvents?.length || 0) > 0 && (
-        <section className="px-4 mb-6">
-          <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-3">Aankomend</h2>
-          <div className="space-y-2">
-            {upcomingMatches?.map((m) => (
-              <Link key={m.id} href={`/wedstrijden/${m.id}`}>
-                <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">{m.home_team_name} vs {m.away_team_name}</p>
-                      <p className="text-xs text-[var(--subtle)] mt-0.5">
-                        {format(new Date(m.start_time), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
-                      </p>
+      {/* Upcoming — matches + events merged and sorted by time */}
+      {(() => {
+        const now = new Date()
+        const matchItems = (upcomingMatches ?? []).map((m) => ({ type: 'match' as const, time: new Date(m.start_time), data: m }))
+        const eventItems = (upcomingEvents ?? []).filter((e) => new Date(e.start_time) > now).map((e) => ({ type: 'event' as const, time: new Date(e.start_time), data: e }))
+        const merged = [...matchItems, ...eventItems].sort((a, b) => a.time.getTime() - b.time.getTime())
+        if (merged.length === 0) return null
+        return (
+          <section className="px-4 mb-6">
+            <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-3">Aankomend</h2>
+            <div className="space-y-2">
+              {merged.map((item) => item.type === 'match' ? (
+                <Link key={item.data.id} href={`/wedstrijden/${item.data.id}`}>
+                  <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{item.data.home_team_name} vs {item.data.away_team_name}</p>
+                        <p className="text-xs text-[var(--subtle)] mt-0.5">
+                          {format(item.time, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
+                        </p>
+                      </div>
+                      <span className="text-[var(--sand)] text-xs">⚽</span>
                     </div>
-                    <span className="text-[var(--sand)] text-xs">⚽</span>
                   </div>
-                </div>
-              </Link>
-            ))}
-            {upcomingEvents?.map((e) => (
-              <Link key={e.id} href="/kalender">
-                <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">{e.title}</p>
-                      <p className="text-xs text-[var(--subtle)] mt-0.5">
-                        {format(new Date(e.start_time), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
-                      </p>
+                </Link>
+              ) : (
+                <Link key={item.data.id} href="/kalender">
+                  <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{item.data.title}</p>
+                        <p className="text-xs text-[var(--subtle)] mt-0.5">
+                          {format(item.time, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
+                        </p>
+                      </div>
+                      <span className="text-[var(--olive)] text-xs">📅</span>
                     </div>
-                    <span className="text-[var(--olive)] text-xs">📅</span>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )
+      })()}
 
       {/* Recent results */}
       {(recentMatches?.length ?? 0) > 0 && (
