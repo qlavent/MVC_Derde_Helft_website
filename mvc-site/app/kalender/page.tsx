@@ -9,6 +9,44 @@ import { ChevronLeft, ChevronRight, Plus, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import TimeSelect from '@/components/TimeSelect'
 
+function DateSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // value is YYYY-MM-DD or ''
+  const parts = value ? value.split('-') : ['', '', '']
+  const year = parts[0] || ''
+  const month = parts[1] || ''
+  const day = parts[2] || ''
+
+  function update(y: string, mo: string, d: string) {
+    if (y && mo && d) onChange(`${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`)
+    else onChange('')
+  }
+
+  const sel = "bg-[var(--muted)] border border-[var(--border)] rounded-xl px-2 py-2.5 text-[var(--fg)] text-sm focus:outline-none cursor-pointer"
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({length: 5}, (_, i) => String(currentYear + i - 1))
+
+  return (
+    <div className="flex gap-1.5 flex-1">
+      <select value={day} onChange={(e) => update(year, month, e.target.value)} className={`${sel} w-16`}>
+        <option value="">dd</option>
+        {Array.from({length:31},(_,i)=>i+1).map(d=>(
+          <option key={d} value={String(d).padStart(2,'0')}>{String(d).padStart(2,'0')}</option>
+        ))}
+      </select>
+      <select value={month} onChange={(e) => update(year, e.target.value, day)} className={`${sel} w-20`}>
+        <option value="">mm</option>
+        {['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,i)=>(
+          <option key={m} value={m}>{['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][i]}</option>
+        ))}
+      </select>
+      <select value={year} onChange={(e) => update(e.target.value, month, day)} className={`${sel} flex-1`}>
+        <option value="">jaar</option>
+        {years.map(y=><option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  )
+}
+
 export default function KalenderPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -34,8 +72,8 @@ export default function KalenderPage() {
 
   async function addEvent() {
     if (!form.title || !form.start_date) return
-    const startTime = form.start_date + (form.start_time ? `T${form.start_time}:00` : 'T00:00:00')
-    const endTime = form.end_date ? form.end_date + (form.end_time ? `T${form.end_time}:00` : 'T00:00:00') : null
+    const startTime = new Date(form.start_date + (form.start_time ? `T${form.start_time}:00` : 'T00:00:00')).toISOString()
+    const endTime = form.end_date ? new Date(form.end_date + (form.end_time ? `T${form.end_time}:00` : 'T00:00:00')).toISOString() : null
     await supabase.from('calendar_events').insert({
       title: form.title,
       start_time: startTime,
@@ -221,14 +259,12 @@ export default function KalenderPage() {
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="text-[10px] text-[var(--subtle)] mb-1 block">Start</label>
-                  <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="w-full bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none mb-2" />
+                  <DateSelect value={form.start_date} onChange={(v) => setForm({ ...form, start_date: v })} />
                   <TimeSelect value={form.start_time} onChange={(v) => setForm({ ...form, start_time: v })} />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] text-[var(--subtle)] mb-1 block">Einde</label>
-                  <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="w-full bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none mb-2" />
+                  <DateSelect value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
                   <TimeSelect value={form.end_time} onChange={(v) => setForm({ ...form, end_time: v })} />
                 </div>
               </div>
