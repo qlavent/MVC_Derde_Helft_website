@@ -37,7 +37,7 @@ body {
 
 /* Safe area for bottom nav on iOS */
 .pb-safe {
-  padding-bottom: max(5rem, env(safe-area-inset-bottom));
+  padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
 /* Typography improvements */
