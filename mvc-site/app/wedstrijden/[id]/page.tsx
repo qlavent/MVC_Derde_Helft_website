@@ -98,7 +98,7 @@ function PreviousMeetings({ match }: { match: Match }) {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-[var(--subtle)] truncate">
-                  {format(new Date(m.start_time), 'd MMM yyyy', { locale: nl })} • {m.series_name ?? ''}
+                  {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM yyyy', { locale: nl }) })()} • {m.series_name ?? ''}
                 </p>
                 <p className="text-sm font-semibold truncate">
                   {m.home_team_name} – {m.away_team_name}
@@ -260,7 +260,7 @@ export default function MatchDetailPage() {
 
       {/* Match header */}
       <div className="px-4 pb-4">
-        <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {format(new Date(match.start_time), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}</p>
+        <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {(() => { const r = new Date(match.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'EEEE d MMM yyyy • HH:mm', { locale: nl }) })()}</p>
 
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
@@ -284,7 +284,7 @@ export default function MatchDetailPage() {
                 </div>
               </div>
             ) : (
-              <span className="text-lg text-[var(--subtle)]">{format(new Date(match.start_time), 'HH:mm')}</span>
+              <span className="text-lg text-[var(--subtle)]">{(() => { const r = new Date(match.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'HH:mm') })()}</span>
             )}
             {match.rbfa_home_score !== null && (
               <p className="text-[10px] text-[var(--subtle2)] mt-1">Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}</p>

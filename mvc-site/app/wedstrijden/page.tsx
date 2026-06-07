@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { Match } from '@/lib/types'
 import MatchCard from '@/components/MatchCard'
@@ -99,14 +100,19 @@ export default function WedstrijdenPage() {
           </div>
           <h1 className="text-xl font-black">Wedstrijden</h1>
         </div>
-        <button
-          onClick={syncRbfa}
-          disabled={syncing}
-          className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 active:opacity-70 disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-          {syncing ? 'Syncing...' : 'Sync RBFA'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={syncRbfa}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 active:opacity-70 disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync RBFA'}
+          </button>
+          <Link href="/rankings" className="flex items-center gap-1 text-xs text-[var(--subtle)] border border-[var(--border)] rounded-full px-3 py-1.5">
+            🏆 Standen
+          </Link>
+        </div>
       </div>
 
       {/* Season selector */}

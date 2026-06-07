@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { Player, PlayerStats } from '@/lib/types'
-import { ChevronDown, RefreshCw, Trophy } from 'lucide-react'
+import { ChevronDown, RefreshCw } from 'lucide-react'
 
 function getSeason(dateStr: string): string {
   const date = new Date(dateStr)
@@ -17,8 +17,8 @@ function getSeason(dateStr: string): string {
 function seasonDateRange(season: string): { from: string; to: string } {
   const startYear = parseInt(season.split('-')[0])
   return {
-    from: `${startYear}-08-01T00:00:00`,
-    to: `${startYear + 1}-07-31T23:59:59`,
+    from: `${startYear}-08-01T00:00:00+00:00`,
+    to: `${startYear + 1}-07-31T23:59:59+00:00`,
   }
 }
 
@@ -75,6 +75,7 @@ export default function SpelersPage() {
       const { data: seasonMatches } = await supabase
         .from('matches').select('id').gte('start_time', from).lte('start_time', to)
       matchIds = seasonMatches?.map((m) => m.id) ?? []
+      if (matchIds.length === 0) matchIds = null // no matches found, show all
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -186,13 +187,6 @@ export default function SpelersPage() {
         </button>
       </div>
 
-      {/* Rankings shortcut */}
-      <div className="px-4 mb-2">
-        <Link href="/rankings" className="flex items-center gap-2 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 w-fit">
-          <Trophy size={12} /> Bekijk rangschikking
-        </Link>
-      </div>
-
       {/* Season selector */}
       <div className="px-4 mb-4 flex items-center gap-3 flex-wrap">
         <div className="relative inline-block">
@@ -275,63 +269,104 @@ export default function SpelersPage() {
 
       {/* Player detail modal */}
       {selectedPlayer && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setSelectedPlayer(null)}>
-          <div className="bg-[var(--surface)] rounded-3xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
-                <span className="text-base font-black text-[var(--sand)]">
-                  {selectedPlayer.player.first_name[0]}{selectedPlayer.player.last_name[0]}
-                </span>
-              </div>
-              <div>
-                <h2 className="text-lg font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</h2>
-                <p className="text-xs text-[var(--subtle)]">Seizoen {selectedSeason === 'all' ? 'Totaal' : selectedSeason}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[
-                { label: 'Gespeeld', value: selectedPlayer.games_played ?? 0 },
-                { label: 'Gewonnen', value: selectedPlayer.wins ?? 0 },
-                { label: 'Gelijk', value: selectedPlayer.draws ?? 0 },
-                { label: 'Verloren', value: selectedPlayer.losses ?? 0 },
-                { label: 'Goals', value: selectedPlayer.goals },
-                { label: 'MOTM', value: selectedPlayer.motm_count },
-              ].map(s => (
-                <div key={s.label} className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                  <p className="text-xl font-black text-[var(--sand)]">{s.value}</p>
-                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">{s.label}</p>
+        <div className="fixed inset-0 z-50 flex" style={{ background: 'var(--bg)' }}>
+          {/* Player list sidebar — scroll to pick another player */}
+          <div className="w-20 flex-shrink-0 border-r border-[var(--border)] overflow-y-auto py-4">
+            <button onClick={() => setSelectedPlayer(null)} className="w-full flex items-center justify-center py-2 mb-3 text-[var(--subtle)]">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            </button>
+            {stats.map((s) => (
+              <button
+                key={s.player.id}
+                onClick={() => setSelectedPlayer(s)}
+                className={`w-full flex flex-col items-center gap-1 py-2 px-1 transition-colors ${selectedPlayer.player.id === s.player.id ? 'bg-[var(--sand)]/20' : ''}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${selectedPlayer.player.id === s.player.id ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--muted)] text-[var(--fg)]'}`}>
+                  {s.player.first_name[0]}{s.player.last_name[0]}
                 </div>
-              ))}
+                <span className="text-[8px] text-center text-[var(--subtle)] leading-tight">{s.player.first_name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Stats detail */}
+          <div className="flex-1 overflow-y-auto px-5 pt-12 pb-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</h2>
+              <p className="text-xs text-[var(--subtle)] mt-0.5">Seizoen {selectedSeason === 'all' ? 'Totaal' : selectedSeason}</p>
             </div>
+
+            {/* Main stats */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.games_played ?? 0}</p>
+                <p className="text-xs text-[var(--subtle)] mt-1">Wedstrijden gespeeld</p>
+              </div>
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.goals}</p>
+                <p className="text-xs text-[var(--subtle)] mt-1">Doelpunten</p>
+              </div>
+            </div>
+
+            {/* W/D/L */}
+            {(selectedPlayer.games_played ?? 0) > 0 && (
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] mb-4">
+                <p className="text-xs text-[var(--subtle)] uppercase tracking-wide mb-3">Resultaten</p>
+                <div className="flex gap-3">
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-black text-green-400">{selectedPlayer.wins ?? 0}</p>
+                    <p className="text-[10px] text-[var(--subtle)]">Gewonnen</p>
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-black text-[var(--subtle)]">{selectedPlayer.draws ?? 0}</p>
+                    <p className="text-[10px] text-[var(--subtle)]">Gelijk</p>
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-black text-red-400">{selectedPlayer.losses ?? 0}</p>
+                    <p className="text-[10px] text-[var(--subtle)]">Verloren</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Corners */}
             {(selectedPlayer.corners_taken > 0 || selectedPlayer.corners_headed > 0) && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                  <p className="text-xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
-                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">Corners genomen</p>
-                </div>
-                <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                  <p className="text-xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
-                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">Koppen</p>
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] mb-4">
+                <p className="text-xs text-[var(--subtle)] uppercase tracking-wide mb-3">Corners</p>
+                <div className="flex gap-3">
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
+                    <p className="text-[10px] text-[var(--subtle)]">Genomen</p>
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
+                    <p className="text-[10px] text-[var(--subtle)]">Gekopt</p>
+                  </div>
+                  {selectedPlayer.corner_goals > 0 && (
+                    <div className="flex-1 text-center">
+                      <p className="text-2xl font-black text-[var(--sand)]">{selectedPlayer.corner_goals}</p>
+                      <p className="text-[10px] text-[var(--subtle)]">Corner goals</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            {(selectedPlayer.yellow_cards > 0 || selectedPlayer.red_cards > 0) && (
-              <div className="flex gap-3">
-                {selectedPlayer.yellow_cards > 0 && (
-                  <div className="flex-1 bg-yellow-400/10 rounded-xl p-3 text-center border border-yellow-400/20">
-                    <p className="text-xl font-black text-yellow-400">{selectedPlayer.yellow_cards}</p>
-                    <p className="text-[9px] text-[var(--subtle)] mt-0.5">Gele kaarten</p>
-                  </div>
-                )}
-                {selectedPlayer.red_cards > 0 && (
-                  <div className="flex-1 bg-red-500/10 rounded-xl p-3 text-center border border-red-500/20">
-                    <p className="text-xl font-black text-red-400">{selectedPlayer.red_cards}</p>
-                    <p className="text-[9px] text-[var(--subtle)] mt-0.5">Rode kaarten</p>
-                  </div>
-                )}
+
+            {/* Cards + MOTM */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] text-center">
+                <p className="text-2xl font-black text-yellow-400">{selectedPlayer.yellow_cards}</p>
+                <p className="text-[10px] text-[var(--subtle)] mt-1">Geel</p>
               </div>
-            )}
-            <button onClick={() => setSelectedPlayer(null)} className="w-full mt-4 py-3 bg-[var(--muted)] rounded-xl text-sm font-semibold">Sluiten</button>
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] text-center">
+                <p className="text-2xl font-black text-red-400">{selectedPlayer.red_cards}</p>
+                <p className="text-[10px] text-[var(--subtle)] mt-1">Rood</p>
+              </div>
+              <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] text-center">
+                <p className="text-2xl font-black text-yellow-300">{selectedPlayer.motm_count}</p>
+                <p className="text-[10px] text-[var(--subtle)] mt-1">MOTM ⭐</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
