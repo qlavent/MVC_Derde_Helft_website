@@ -6,6 +6,7 @@ import { nl } from 'date-fns/locale'
 import ThemeToggle from '@/components/ThemeToggle'
 import LiveBanner from '@/components/LiveBanner'
 import UpcomingFeed from '@/components/UpcomingFeed'
+import KitCarrierBanner from '@/components/KitCarrierBanner'
 
 export const revalidate = 30
 
@@ -44,9 +45,8 @@ async function getRbfaMatches(): Promise<Match[]> {
 async function getData() {
   const now = new Date().toISOString()
 
-  const [{ data: recentMatches }, { data: latestKitCarrier }] = await Promise.all([
+  const [{ data: recentMatches }] = await Promise.all([
     supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
-    supabase.from('kit_carriers').select('*, player:players(first_name, last_name), match:matches(start_time)').order('created_at', { ascending: false }).limit(1).single(),
   ])
 
   // If Supabase is empty, fall back to RBFA API directly
@@ -55,16 +55,15 @@ async function getData() {
     const rbfa = await getRbfaMatches()
     return {
       recentMatches: rbfa.filter((m) => m.state === 'finished').reverse().slice(0, 5),
-      latestKitCarrier: null,
     }
   }
 
-  return { recentMatches, latestKitCarrier }
+  return { recentMatches }
 }
 
 
 export default async function HomePage() {
-  const { recentMatches, latestKitCarrier } = await getData()
+  const { recentMatches } = await getData()
 
   return (
     <div className="min-h-screen">
@@ -84,22 +83,8 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Kit carrier banner */}
-      {latestKitCarrier?.player && (
-        <div className="mx-4 mb-3">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3 flex items-center gap-3">
-            <span className="text-xl">🎽</span>
-            <div>
-              <p className="text-xs text-[var(--subtle)]">Truitjes</p>
-              <p className="text-sm font-bold">
-                {(latestKitCarrier.player as { first_name: string; last_name: string }).first_name}{' '}
-                {(latestKitCarrier.player as { first_name: string; last_name: string }).last_name}{' '}
-                heeft de truitjes
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Kit carrier banner — client component, auto-refreshes every 30s */}
+      <KitCarrierBanner />
 
       {/* Live match banner — client component, auto-refreshes every 30s */}
       <LiveBanner />
