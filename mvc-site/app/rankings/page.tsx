@@ -49,7 +49,7 @@ export default function RankingsPage() {
   return (
     <div className="min-h-screen">
       <div className="px-4 pt-12 pb-4 flex items-center gap-2">
-        <Link href="/spelers" className="text-[var(--subtle)]"><ChevronLeft size={18} /></Link>
+        <Link href="/wedstrijden" className="text-[var(--subtle)]"><ChevronLeft size={18} /></Link>
         <h1 className="text-xl font-black">Rangschikking</h1>
       </div>
 

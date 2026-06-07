@@ -47,7 +47,7 @@ export default function SpelersPage() {
   }, [])
 
   useEffect(() => {
-    if (players.length > 0) computeStats()
+    if (players.length > 0) computeStats(selectedSeason)
   }, [players, selectedSeason])
 
   async function loadPlayers() {
@@ -66,11 +66,11 @@ export default function SpelersPage() {
     setSelectedSeason(sorted.includes(current) ? current : sorted[0] ?? 'all')
   }
 
-  async function computeStats() {
+  async function computeStats(season: string) {
     setLoading(true)
 
     let matchIds: string[] | null = null
-    if (selectedSeason !== 'all') {
+    if (season !== 'all') {
       const { from, to } = seasonDateRange(selectedSeason)
       const { data: seasonMatches } = await supabase
         .from('matches').select('id').gte('start_time', from).lte('start_time', to)
@@ -293,7 +293,10 @@ export default function SpelersPage() {
           <div className="flex-1 overflow-y-auto px-5 pt-12 pb-8">
             <div className="mb-6">
               <h2 className="text-2xl font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</h2>
-              <p className="text-xs text-[var(--subtle)] mt-0.5">Seizoen {selectedSeason === 'all' ? 'Totaal' : selectedSeason}</p>
+              <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="mt-1 text-xs bg-[var(--muted)] border border-[var(--border)] rounded-lg px-2 py-1 text-[var(--fg)] focus:outline-none cursor-pointer">
+                <option value="all">Alle seizoenen</option>
+                {seasons.map((s) => <option key={s} value={s}>Seizoen {s}</option>)}
+              </select>
             </div>
 
             {/* Main stats */}
