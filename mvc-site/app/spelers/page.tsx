@@ -39,6 +39,7 @@ export default function SpelersPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
 
   useEffect(() => {
     loadPlayers()
@@ -227,7 +228,7 @@ export default function SpelersPage() {
           stats.map((s) => {
             const hasStats = s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
             return (
-              <div key={s.player.id} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+              <div key={s.player.id} onClick={() => setSelectedPlayer(s)} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] cursor-pointer">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-9 h-9 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-[var(--sand)]">
@@ -271,6 +272,69 @@ export default function SpelersPage() {
           })
         )}
       </div>
+
+      {/* Player detail modal */}
+      {selectedPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setSelectedPlayer(null)}>
+          <div className="bg-[var(--surface)] rounded-3xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+                <span className="text-base font-black text-[var(--sand)]">
+                  {selectedPlayer.player.first_name[0]}{selectedPlayer.player.last_name[0]}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-lg font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</h2>
+                <p className="text-xs text-[var(--subtle)]">Seizoen {selectedSeason === 'all' ? 'Totaal' : selectedSeason}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {[
+                { label: 'Gespeeld', value: selectedPlayer.games_played ?? 0 },
+                { label: 'Gewonnen', value: selectedPlayer.wins ?? 0 },
+                { label: 'Gelijk', value: selectedPlayer.draws ?? 0 },
+                { label: 'Verloren', value: selectedPlayer.losses ?? 0 },
+                { label: 'Goals', value: selectedPlayer.goals },
+                { label: 'MOTM', value: selectedPlayer.motm_count },
+              ].map(s => (
+                <div key={s.label} className="bg-[var(--muted)] rounded-xl p-3 text-center">
+                  <p className="text-xl font-black text-[var(--sand)]">{s.value}</p>
+                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+            {(selectedPlayer.corners_taken > 0 || selectedPlayer.corners_headed > 0) && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
+                  <p className="text-xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
+                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">Corners genomen</p>
+                </div>
+                <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
+                  <p className="text-xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
+                  <p className="text-[9px] text-[var(--subtle)] mt-0.5">Koppen</p>
+                </div>
+              </div>
+            )}
+            {(selectedPlayer.yellow_cards > 0 || selectedPlayer.red_cards > 0) && (
+              <div className="flex gap-3">
+                {selectedPlayer.yellow_cards > 0 && (
+                  <div className="flex-1 bg-yellow-400/10 rounded-xl p-3 text-center border border-yellow-400/20">
+                    <p className="text-xl font-black text-yellow-400">{selectedPlayer.yellow_cards}</p>
+                    <p className="text-[9px] text-[var(--subtle)] mt-0.5">Gele kaarten</p>
+                  </div>
+                )}
+                {selectedPlayer.red_cards > 0 && (
+                  <div className="flex-1 bg-red-500/10 rounded-xl p-3 text-center border border-red-500/20">
+                    <p className="text-xl font-black text-red-400">{selectedPlayer.red_cards}</p>
+                    <p className="text-[9px] text-[var(--subtle)] mt-0.5">Rode kaarten</p>
+                  </div>
+                )}
+              </div>
+            )}
+            <button onClick={() => setSelectedPlayer(null)} className="w-full mt-4 py-3 bg-[var(--muted)] rounded-xl text-sm font-semibold">Sluiten</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
