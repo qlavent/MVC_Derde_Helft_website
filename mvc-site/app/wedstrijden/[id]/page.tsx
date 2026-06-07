@@ -271,25 +271,6 @@ export default function MatchDetailPage() {
                 ))}
               </div>
             </div>
-
-            {/* Instagram */}
-            <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-              <h3 className="text-sm font-semibold mb-2">📸 Instagram post</h3>
-              <input
-                type="url"
-                placeholder="https://instagram.com/p/..."
-                defaultValue={match.instagram_post_url ?? ''}
-                onBlur={async (e) => {
-                  await supabase.from('matches').update({ instagram_post_url: e.target.value || null }).eq('id', id)
-                }}
-                className="w-full bg-[var(--muted)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--subtle)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
-              />
-              {match.instagram_post_url && (
-                <a href={match.instagram_post_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--sand)] mt-2 block">
-                  Bekijk post →
-                </a>
-              )}
-            </div>
           </>
         )}
 
