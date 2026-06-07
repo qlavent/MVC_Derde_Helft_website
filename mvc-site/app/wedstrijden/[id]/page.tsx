@@ -55,7 +55,11 @@ export default function MatchDetailPage() {
     setMatch(matchData)
     setPlayers(allPlayers ?? [])
     const selIds = new Set(matchPlayerRows?.map((r) => r.player_id) ?? [])
-    setSelectedPlayers((allPlayers ?? []).filter((p) => selIds.has(p.id)))
+    // If no RBFA selection exists, use full squad as default
+    const selected = selIds.size > 0
+      ? (allPlayers ?? []).filter((p) => selIds.has(p.id))
+      : (allPlayers ?? [])
+    setSelectedPlayers(selected)
     setGoals((goalData ?? []) as Goal[])
     setCorners((cornerData ?? []) as Corner[])
     setCards((cardData ?? []) as Card[])
