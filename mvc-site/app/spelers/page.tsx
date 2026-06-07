@@ -264,7 +264,7 @@ export default function SpelersPage() {
             }
             return (b[sortBy as keyof typeof b] as number ?? 0) - (a[sortBy as keyof typeof a] as number ?? 0)
           }).map((s, idx) => {
-            const hasStats = s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
+            const hasStats = (s.games_played ?? 0) > 0 || s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
             return (
               <div key={s.player.id} onClick={() => setSelectedPlayer(s)} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] cursor-pointer">
                 <div className="flex items-center gap-3 mb-3">
