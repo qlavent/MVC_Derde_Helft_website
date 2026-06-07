@@ -123,7 +123,8 @@ export default function MatchDetailPage() {
   }
 
   async function pickRandomKitCarrier(excludeIds: string[]) {
-    const eligible = selectedPlayers.filter((p) => !excludeIds.includes(p.id))
+    const pool = selectedPlayers.length > 0 ? selectedPlayers : players
+    const eligible = pool.filter((p) => !excludeIds.includes(p.id))
     if (!eligible.length) return
     const picked = eligible[Math.floor(Math.random() * eligible.length)]
     await supabase.from('kit_carriers').upsert({ match_id: id, player_id: picked.id }, { onConflict: 'match_id' })
@@ -401,7 +402,7 @@ export default function MatchDetailPage() {
       )}
       {showKitModal && (
         <KitModal
-          players={selectedPlayers}
+          players={selectedPlayers.length > 0 ? selectedPlayers : players}
           onPick={pickRandomKitCarrier}
           onClose={() => setShowKitModal(false)}
           allPlayers={players}

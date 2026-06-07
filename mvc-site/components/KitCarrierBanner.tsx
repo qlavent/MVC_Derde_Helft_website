@@ -7,10 +7,12 @@ export default function KitCarrierBanner() {
   const [name, setName] = useState<string | null>(null)
 
   async function fetch() {
+    // Get kit carrier from the most recent finished match
     const { data } = await supabase
       .from('kit_carriers')
-      .select('player:players(first_name, last_name)')
-      .order('created_at', { ascending: false })
+      .select('player:players(first_name, last_name), match:matches!inner(start_time, state)')
+      .eq('match.state', 'finished')
+      .order('match(start_time)', { ascending: false })
       .limit(1)
       .single()
     const p = data?.player as unknown as { first_name: string; last_name: string } | null
