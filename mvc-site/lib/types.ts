@@ -96,4 +96,8 @@ export interface PlayerStats {
   yellow_cards: number
   red_cards: number
   motm_count: number
+  games_played: number
+  wins: number
+  draws: number
+  losses: number
 }

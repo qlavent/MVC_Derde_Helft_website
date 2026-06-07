@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, Users, CalendarDays, Sun, Moon } from 'lucide-react'
+import { Home, Calendar, Users, CalendarDays, Sun, Moon, Trophy } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 
 const navItems = [
   { href: '/', label: 'Feed', icon: Home },
   { href: '/wedstrijden', label: 'Wedstrijden', icon: Calendar },
   { href: '/spelers', label: 'Spelers', icon: Users },
+  { href: '/rankings', label: 'Standen', icon: Trophy },
   { href: '/kalender', label: 'Kalender', icon: CalendarDays },
 ]
 

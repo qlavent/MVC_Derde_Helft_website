@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier } from '@/lib/types'
 import { format } from 'date-fns'
@@ -10,6 +10,110 @@ import { ChevronLeft, Plus, Shuffle, X } from 'lucide-react'
 import Link from 'next/link'
 
 type Tab = 'info' | 'doelpunten' | 'corners' | 'kaarten'
+
+function PreviousMeetings({ match }: { match: Match }) {
+  const router = useRouter()
+  const [prevMatches, setPrevMatches] = useState<Match[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      // Find the opponent RBFA id
+      const opponentRbfaId = match.is_home_game ? match.away_team_rbfa_id : match.home_team_rbfa_id
+      const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
+
+      let query = supabase
+        .from('matches')
+        .select('*')
+        .eq('state', 'finished')
+        .neq('id', match.id)
+        .order('start_time', { ascending: false })
+
+      if (opponentRbfaId) {
+        // Match by RBFA id (home or away)
+        const { data } = await supabase
+          .from('matches')
+          .select('*')
+          .eq('state', 'finished')
+          .neq('id', match.id)
+          .or(`home_team_rbfa_id.eq.${opponentRbfaId},away_team_rbfa_id.eq.${opponentRbfaId}`)
+          .order('start_time', { ascending: false })
+        setPrevMatches(data ?? [])
+      } else {
+        // Fallback: match by team name
+        const { data } = await query
+          .or(`home_team_name.ilike.%${opponentName}%,away_team_name.ilike.%${opponentName}%`)
+        setPrevMatches(data ?? [])
+      }
+      setLoading(false)
+    }
+    load()
+  }, [match])
+
+  if (loading) {
+    return (
+      <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+        <h3 className="text-sm font-semibold mb-3">Vorige ontmoetingen</h3>
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-12 bg-[var(--muted)] rounded-xl animate-pulse" />)}
+        </div>
+      </div>
+    )
+  }
+
+  if (prevMatches.length === 0) return null
+
+  return (
+    <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+      <h3 className="text-sm font-semibold mb-3">Vorige ontmoetingen</h3>
+      <div className="space-y-2">
+        {prevMatches.map((m) => {
+          const home = m.manual_home_score ?? m.rbfa_home_score
+          const away = m.manual_away_score ?? m.rbfa_away_score
+          const ourScore = m.is_home_game ? home : away
+          const theirScore = m.is_home_game ? away : home
+          let outcome: 'win' | 'draw' | 'loss' | null = null
+          if (ourScore !== null && theirScore !== null) {
+            if (ourScore > theirScore) outcome = 'win'
+            else if (ourScore === theirScore) outcome = 'draw'
+            else outcome = 'loss'
+          }
+          const outcomeColors = {
+            win: 'bg-green-500/20 text-green-400 border-green-500/30',
+            draw: 'bg-[var(--muted)] text-[var(--subtle)] border-[var(--border)]',
+            loss: 'bg-red-500/20 text-red-400 border-red-500/30',
+          }
+          const outcomeLabels = { win: 'W', draw: 'G', loss: 'V' }
+
+          return (
+            <button
+              key={m.id}
+              onClick={() => router.push(`/wedstrijden/${m.id}`)}
+              className="w-full flex items-center gap-3 bg-[var(--muted)] rounded-xl px-3 py-2.5 text-left hover:bg-[var(--border)] transition-colors"
+            >
+              {outcome && (
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${outcomeColors[outcome]}`}>
+                  {outcomeLabels[outcome]}
+                </span>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[var(--subtle)] truncate">
+                  {format(new Date(m.start_time), 'd MMM yyyy', { locale: nl })} • {m.series_name ?? ''}
+                </p>
+                <p className="text-sm font-semibold truncate">
+                  {m.home_team_name} – {m.away_team_name}
+                </p>
+              </div>
+              <span className="text-sm font-black tabular-nums flex-shrink-0 text-[var(--sand)]">
+                {home ?? '?'}–{away ?? '?'}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -212,6 +316,9 @@ export default function MatchDetailPage() {
         {/* INFO TAB */}
         {tab === 'info' && (
           <>
+            {/* Previous meetings (upcoming matches only) */}
+            {match.state === 'upcoming' && <PreviousMeetings match={match} />}
+
             {/* Selection */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">

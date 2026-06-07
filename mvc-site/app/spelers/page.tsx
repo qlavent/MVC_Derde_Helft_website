@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { Player, PlayerStats } from '@/lib/types'
-import { ChevronDown, RefreshCw } from 'lucide-react'
+import { ChevronDown, RefreshCw, Trophy } from 'lucide-react'
 
 function getSeason(dateStr: string): string {
   const date = new Date(dateStr)
@@ -85,27 +86,72 @@ export default function SpelersPage() {
       { data: cornersHeaded },
       { data: cards },
       { data: motms },
+      { data: matchPlayers },
+      { data: finishedMatches },
     ] = await Promise.all([
       applyFilter(supabase.from('goals').select('player_id, is_corner_goal, match_id'), matchIds),
       applyFilter(supabase.from('corners').select('taker_id, match_id'), matchIds),
       applyFilter(supabase.from('corners').select('header_id, match_id'), matchIds),
       applyFilter(supabase.from('cards').select('player_id, card_type, match_id'), matchIds),
       applyFilter(supabase.from('motm').select('player_id, match_id'), matchIds),
+      applyFilter(supabase.from('match_players').select('player_id, match_id'), matchIds),
+      applyFilter(
+        supabase.from('matches').select('id, is_home_game, rbfa_home_score, rbfa_away_score, manual_home_score, manual_away_score').eq('state', 'finished'),
+        matchIds
+      ),
     ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const computed: PlayerStats[] = players.map((p) => ({
-      player: p,
-      goals: (goals ?? []).filter((g: any) => g.player_id === p.id).length,
-      corner_goals: (goals ?? []).filter((g: any) => g.player_id === p.id && g.is_corner_goal).length,
-      corners_taken: (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id).length,
-      corners_headed: (cornersHeaded ?? []).filter((c: any) => c.header_id === p.id).length,
-      yellow_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'yellow').length,
-      red_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'red').length,
-      motm_count: (motms ?? []).filter((m: any) => m.player_id === p.id).length,
-    }))
+    // Build a map of match_id -> result for our team
+    type MatchResult = 'win' | 'draw' | 'loss'
+    const matchResultMap = new Map<string, MatchResult>()
+    for (const m of finishedMatches ?? []) {
+      const home = m.manual_home_score ?? m.rbfa_home_score
+      const away = m.manual_away_score ?? m.rbfa_away_score
+      if (home === null || away === null) continue
+      const ourScore = m.is_home_game ? home : away
+      const theirScore = m.is_home_game ? away : home
+      if (ourScore > theirScore) matchResultMap.set(m.id, 'win')
+      else if (ourScore === theirScore) matchResultMap.set(m.id, 'draw')
+      else matchResultMap.set(m.id, 'loss')
+    }
 
-    setStats(computed.sort((a, b) => b.goals - a.goals || b.motm_count - a.motm_count))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const computed: PlayerStats[] = players.map((p) => {
+      const playerMatchIds = (matchPlayers ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((mp: any) => mp.player_id === p.id)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((mp: any) => mp.match_id as string)
+
+      const playedFinished = playerMatchIds.filter((mid: string) => matchResultMap.has(mid))
+      const wins = playedFinished.filter((mid: string) => matchResultMap.get(mid) === 'win').length
+      const draws = playedFinished.filter((mid: string) => matchResultMap.get(mid) === 'draw').length
+      const losses = playedFinished.filter((mid: string) => matchResultMap.get(mid) === 'loss').length
+
+      return {
+        player: p,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        goals: (goals ?? []).filter((g: any) => g.player_id === p.id).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        corner_goals: (goals ?? []).filter((g: any) => g.player_id === p.id && g.is_corner_goal).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        corners_taken: (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        corners_headed: (cornersHeaded ?? []).filter((c: any) => c.header_id === p.id).length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yellow_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'yellow').length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        red_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'red').length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        motm_count: (motms ?? []).filter((m: any) => m.player_id === p.id).length,
+        games_played: playedFinished.length,
+        wins,
+        draws,
+        losses,
+      }
+    })
+
+    setStats(computed.sort((a, b) => b.games_played - a.games_played || b.goals - a.goals || b.motm_count - a.motm_count))
     setLoading(false)
   }
 
@@ -139,8 +185,8 @@ export default function SpelersPage() {
         </button>
       </div>
 
-      {/* Season selector */}
-      <div className="px-4 mb-4 flex items-center gap-3">
+      {/* Season selector + Rankings link */}
+      <div className="px-4 mb-4 flex items-center gap-3 flex-wrap">
         <div className="relative inline-block">
           <select
             value={selectedSeason}
@@ -155,6 +201,12 @@ export default function SpelersPage() {
           <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--subtle)] pointer-events-none" />
         </div>
         <span className="text-xs text-[var(--subtle)]">{players.length} spelers</span>
+        <Link
+          href="/rankings"
+          className="ml-auto flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5"
+        >
+          <Trophy size={12} /> Rangschikking
+        </Link>
       </div>
 
       <div className="px-4 space-y-3 pb-6">
@@ -181,9 +233,25 @@ export default function SpelersPage() {
                       {s.player.first_name[0]}{s.player.last_name[0]}
                     </span>
                   </div>
-                  <p className="text-sm font-bold flex-1">{s.player.first_name} {s.player.last_name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">{s.player.first_name} {s.player.last_name}</p>
+                    {s.games_played > 0 && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-[var(--subtle2)]">{s.games_played} gespeeld</span>
+                        <span className="text-[10px] text-green-400 font-semibold">{s.wins}W</span>
+                        <span className="text-[10px] text-[var(--subtle)] font-semibold">{s.draws}G</span>
+                        <span className="text-[10px] text-red-400 font-semibold">{s.losses}V</span>
+                      </div>
+                    )}
+                  </div>
                   {s.motm_count > 0 && (
-                    <span className="text-xs text-yellow-400">⭐ {s.motm_count}×</span>
+                    <span className="text-xs text-yellow-400 flex-shrink-0">⭐ {s.motm_count}×</span>
+                  )}
+                  {s.games_played > 0 && (
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--muted)] flex flex-col items-center justify-center">
+                      <span className="text-base font-black tabular-nums text-[var(--sand)]">{s.games_played}</span>
+                      <span className="text-[8px] text-[var(--subtle2)] leading-none">wed</span>
+                    </div>
                   )}
                 </div>
                 {hasStats ? (
