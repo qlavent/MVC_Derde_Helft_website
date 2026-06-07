@@ -154,7 +154,7 @@ export default function MatchDetailPage() {
         <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {format(new Date(match.start_time), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}</p>
 
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-white'}`}>
+          <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
             {match.home_team_name}
           </span>
 
@@ -182,7 +182,7 @@ export default function MatchDetailPage() {
             )}
           </div>
 
-          <span className={`text-sm font-bold flex-1 text-right ${!match.is_home_game ? 'text-[var(--sand)]' : 'text-white'}`}>
+          <span className={`text-sm font-bold flex-1 text-right ${!match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
             {match.away_team_name}
           </span>
         </div>
@@ -259,7 +259,7 @@ export default function MatchDetailPage() {
                   <button
                     key={p.id}
                     onClick={() => setMotmPlayer(p.id)}
-                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-black font-semibold' : 'bg-[var(--muted)] text-white'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-black font-semibold' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
                   >
                     {p.first_name} {p.last_name}
                   </button>
@@ -277,7 +277,7 @@ export default function MatchDetailPage() {
                 onBlur={async (e) => {
                   await supabase.from('matches').update({ instagram_post_url: e.target.value || null }).eq('id', id)
                 }}
-                className="w-full bg-[var(--muted)] rounded-lg px-3 py-2 text-sm text-white placeholder-[var(--subtle2)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
+                className="w-full bg-[var(--muted)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--subtle)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
               />
               {match.instagram_post_url && (
                 <a href={match.instagram_post_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--sand)] mt-2 block">
@@ -318,7 +318,7 @@ export default function MatchDetailPage() {
           <div className="space-y-3">
             <button
               onClick={() => setShowCornerModal(true)}
-              className="w-full bg-[var(--olive)] text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
+              className="w-full bg-[var(--olive)] text-[var(--fg)] rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
             >
               <Plus size={20} /> Corner toevoegen
             </button>
@@ -353,7 +353,7 @@ export default function MatchDetailPage() {
           <div className="space-y-3">
             <button
               onClick={() => setShowCardModal(true)}
-              className="w-full bg-[var(--surface)] border border-yellow-500/50 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
+              className="w-full bg-[var(--surface)] border border-yellow-500/50 text-[var(--fg)] rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
             >
               <Plus size={20} /> Kaart toevoegen
             </button>
@@ -450,14 +450,14 @@ function GoalModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
       <div className="space-y-4">
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Speler</label>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none">
+          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
             <option value="">Kies speler</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
         </div>
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut (optioneel)</label>
-          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 34" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none" />
+          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 34" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
         </div>
         <label className="flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={isCorner} onChange={(e) => setIsCorner(e.target.checked)} className="w-5 h-5 rounded" />
@@ -486,14 +486,14 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
       <div className="space-y-4">
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Nemer</label>
-          <select value={takerId} onChange={(e) => setTakerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none">
+          <select value={takerId} onChange={(e) => setTakerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
             <option value="">Kies nemer</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
         </div>
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Kopballer</label>
-          <select value={headerId} onChange={(e) => setHeaderId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none">
+          <select value={headerId} onChange={(e) => setHeaderId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
             <option value="">Kies kopballer</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
@@ -501,7 +501,7 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
         <div className="flex gap-3">
           <div className="flex-1">
             <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut</label>
-            <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 12" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none" />
+            <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 12" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
           </div>
           <div className="flex items-end pb-3">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -532,7 +532,7 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
       <div className="space-y-4">
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Speler</label>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none">
+          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
             <option value="">Kies speler</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
@@ -551,7 +551,7 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
         </div>
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut</label>
-          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 55" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none" />
+          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 55" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
         </div>
         <button
           disabled={!playerId}
@@ -589,7 +589,7 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
               <button
                 key={p.id}
                 onClick={() => toggleExclude(p.id)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${excludeIds.includes(p.id) ? 'bg-red-900/40 text-red-400 line-through' : 'bg-[var(--muted)] text-white'}`}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${excludeIds.includes(p.id) ? 'bg-red-900/40 text-red-400 line-through' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
               >
                 {p.first_name} {p.last_name}
               </button>
@@ -604,11 +604,11 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
         </button>
         <div className="border-t border-[var(--border)] pt-4">
           <p className="text-xs text-[var(--subtle)] mb-2">Of kies manueel:</p>
-          <select value={manualId} onChange={(e) => setManualId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-white focus:outline-none mb-3">
+          <select value={manualId} onChange={(e) => setManualId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none mb-3">
             <option value="">Kies speler</option>
             {allPlayers.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
-          <button disabled={!manualId} onClick={() => onManualPick(manualId)} className="w-full bg-[var(--muted)] text-white rounded-xl py-3 font-semibold disabled:opacity-40">
+          <button disabled={!manualId} onClick={() => onManualPick(manualId)} className="w-full bg-[var(--muted)] text-[var(--fg)] rounded-xl py-3 font-semibold disabled:opacity-40">
             Bevestigen
           </button>
         </div>
