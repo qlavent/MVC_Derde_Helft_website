@@ -165,7 +165,7 @@ export default function WielPage() {
       </div>
 
       {/* Items */}
-      <div className="px-4">
+      <div className="px-4 pb-28">
         <div className="flex gap-2 mb-4">
           <input
             value={newItem}

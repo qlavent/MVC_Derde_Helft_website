@@ -178,7 +178,7 @@ export default function KalenderPage() {
       </div>
 
       {/* Events list */}
-      <section className="px-4 mb-6">
+      <section className="px-4 mb-6 pb-28">
         <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-3">
           {format(currentMonth, 'MMMM', { locale: nl })}
         </h2>

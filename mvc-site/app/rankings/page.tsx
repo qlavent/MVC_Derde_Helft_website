@@ -92,7 +92,7 @@ export default function RankingsPage() {
       )}
 
       {/* Standings table */}
-      <div className="px-4 pb-6">
+      <div className="px-4 pb-28">
         {loading ? (
           Array.from({length:6}).map((_,i) => <div key={i} className="bg-[var(--surface)] rounded-xl h-12 mb-2 animate-pulse" />)
         ) : error ? (

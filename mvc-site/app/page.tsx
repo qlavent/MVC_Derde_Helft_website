@@ -94,27 +94,24 @@ export default async function HomePage() {
 
       {/* Recent results */}
       {(recentMatches?.length ?? 0) > 0 && (
-        <section className="px-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
+        <section className="mb-4">
+          <div className="flex items-center justify-between mb-2 px-4">
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-          <div className="space-y-3">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none">
             {recentMatches?.map((m) => (
-              <Link key={m.id} href={`/wedstrijden/${m.id}`}>
-                <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm flex-1 truncate">{m.home_team_name}</span>
-                    {(m.manual_home_score ?? m.rbfa_home_score) !== null && (
-                      <span className="bg-[var(--muted)] rounded-lg px-2 py-0.5 text-sm font-bold tabular-nums">
-                        {m.manual_home_score ?? m.rbfa_home_score} — {m.manual_away_score ?? m.rbfa_away_score}
-                      </span>
-                    )}
-                    <span className="text-sm flex-1 text-right truncate">{m.away_team_name}</span>
-                  </div>
-                  <p className="text-xs text-[var(--subtle2)] mt-1 text-center">
-                    {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM yyyy', { locale: nl }) })()}
+              <Link key={m.id} href={`/wedstrijden/${m.id}`} className="flex-shrink-0 w-44">
+                <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors h-full">
+                  <p className="text-[10px] text-[var(--subtle)] mb-1 text-center">
+                    {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM', { locale: nl }) })()}
                   </p>
+                  <p className="text-xs font-semibold text-center mb-1 truncate">{m.is_home_game ? m.away_team_name : m.home_team_name}</p>
+                  {(m.manual_home_score ?? m.rbfa_home_score) !== null && (
+                    <p className="text-center text-sm font-black text-[var(--sand)]">
+                      {m.manual_home_score ?? m.rbfa_home_score} – {m.manual_away_score ?? m.rbfa_away_score}
+                    </p>
+                  )}
                 </div>
               </Link>
             ))}

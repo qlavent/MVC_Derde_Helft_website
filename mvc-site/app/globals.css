@@ -134,6 +134,9 @@ select option {
 }
 .react-datepicker-popper { z-index: 60 !important; }
 
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Improved scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

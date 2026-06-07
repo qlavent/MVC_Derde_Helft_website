@@ -135,7 +135,7 @@ export default function WedstrijdenPage() {
       )}
 
       {/* Match list */}
-      <div className="px-4 space-y-3 pb-6">
+      <div className="px-4 space-y-3 pb-28">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-[var(--surface)] rounded-2xl h-24 animate-pulse" />

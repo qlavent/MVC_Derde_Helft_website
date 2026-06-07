@@ -205,7 +205,7 @@ export default function SpelersPage() {
         <span className="text-xs text-[var(--subtle)]">{players.length} spelers</span>
       </div>
 
-      <div className="px-4 space-y-3 pb-6">
+      <div className="px-4 space-y-3 pb-28">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-[var(--surface)] rounded-2xl h-20 animate-pulse" />
@@ -290,7 +290,7 @@ export default function SpelersPage() {
           </div>
 
           {/* Stats detail */}
-          <div className="flex-1 overflow-y-auto px-5 pt-12 pb-8">
+          <div className="flex-1 overflow-y-auto px-5 pt-12 pb-28">
             <div className="mb-6">
               <h2 className="text-2xl font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</h2>
               <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="mt-1 text-xs bg-[var(--muted)] border border-[var(--border)] rounded-lg px-2 py-1 text-[var(--fg)] focus:outline-none cursor-pointer">
