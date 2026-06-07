@@ -90,7 +90,15 @@ export async function POST() {
       return diffMs >= -3600000 && diffMs <= 14400000
     })
 
+    // Get match IDs that already have RBFA selections to skip re-fetching
+    const { data: matchesWithSelection } = await supabase
+      .from('match_players').select('match_id').eq('source', 'rbfa')
+    const matchIdsWithSelection = new Set(matchesWithSelection?.map((r: { match_id: string }) => r.match_id) ?? [])
+
     for (const m of matches) {
+      const inWindow = windowMatches.some((wm: { id: string }) => wm.id === m.id)
+      const { data: matchRowCheck } = await supabase.from('matches').select('id').eq('rbfa_id', m.id).single()
+      if (matchRowCheck && matchIdsWithSelection.has(matchRowCheck.id) && !inWindow) continue
       const detail = await rbfaQuery(`
         query {
           matchDetail(matchId: "${m.id}", language: nl) {
@@ -123,8 +131,13 @@ export async function POST() {
         ...(detail.matchDetail?.lineup ?? []).map((g: { home?: { id: string }; away?: { id: string } }) => g[ourSide]).filter(Boolean),
         ...(detail.matchDetail?.substitutes ?? []).map((g: { home?: { id: string }; away?: { id: string } }) => g[ourSide]).filter(Boolean),
       ]
-      for (const lp of lineupRows) {
-        const { data: player } = await supabase.from('players').select('id').eq('rbfa_id', lp.id).maybeSingle()
+      for (const lp of lineupRows as { id: string; firstName: string; lastName: string }[]) {
+        // Match by name (two different ID systems between teamMembers and lineup)
+        const { data: player } = await supabase
+          .from('players').select('id')
+          .ilike('last_name', lp.lastName)
+          .ilike('first_name', lp.firstName)
+          .maybeSingle()
         if (!player) continue
         await supabase.from('match_players').upsert(
           { match_id: matchRow.id, player_id: player.id, source: 'rbfa' },
@@ -133,7 +146,7 @@ export async function POST() {
       }
 
       // Only sync cards for matches in time window
-      if (!windowMatches.some((wm: { id: string }) => wm.id === m.id)) continue
+      if (!inWindow) continue
 
       const events = detail.matchDetail?.events ?? []
       for (const group of events) {
