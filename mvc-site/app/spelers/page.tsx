@@ -40,7 +40,7 @@ export default function SpelersPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
-  const [sortBy, setSortBy] = useState<'goals' | 'games_played' | 'motm_count' | 'yellow_cards' | 'corners_taken'>('goals')
+  const [sortBy, setSortBy] = useState<'none' | 'goals' | 'games_played' | 'wins' | 'win_pct' | 'motm_count' | 'corners_taken' | 'yellow_cards'>('games_played')
 
   useEffect(() => {
     loadPlayers()
@@ -70,39 +70,50 @@ export default function SpelersPage() {
   async function computeStats(season: string) {
     setLoading(true)
 
-    let matchIds: string[] | null = null
+    // Fetch ALL data then filter client-side by season (avoids DB IN query issues)
+    const [
+      { data: allGoals },
+      { data: allCornersTaken },
+      { data: allCornersHeaded },
+      { data: allCards },
+      { data: allMotms },
+      { data: allMatchPlayers },
+      { data: allFinishedMatches },
+    ] = await Promise.all([
+      supabase.from('goals').select('player_id, is_corner_goal, match_id'),
+      supabase.from('corners').select('taker_id, match_id'),
+      supabase.from('corners').select('header_id, match_id'),
+      supabase.from('cards').select('player_id, card_type, match_id'),
+      supabase.from('motm').select('player_id, match_id'),
+      supabase.from('match_players').select('player_id, match_id'),
+      supabase.from('matches').select('id, start_time, is_home_game, rbfa_home_score, rbfa_away_score, manual_home_score, manual_away_score').eq('state', 'finished'),
+    ])
+
+    // Filter by season client-side
+    let seasonMatchIds: Set<string> | null = null
     if (season !== 'all') {
-      const { from, to } = seasonDateRange(selectedSeason)
-      const { data: seasonMatches } = await supabase
-        .from('matches').select('id').gte('start_time', from).lte('start_time', to)
-      matchIds = seasonMatches?.map((m) => m.id) ?? []
-      if (matchIds.length === 0) matchIds = null // no matches found, show all
+      const { from, to } = seasonDateRange(season)
+      const fromMs = new Date(from).getTime()
+      const toMs = new Date(to).getTime()
+      seasonMatchIds = new Set(
+        (allFinishedMatches ?? [])
+          .filter((m) => { const t = new Date(m.start_time).getTime(); return t >= fromMs && t <= toMs })
+          .map((m) => m.id)
+      )
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const applyFilter = (q: any, ids: string[] | null) =>
-      ids ? q.in('match_id', ids) : q
+    const fs = <T extends { match_id: string }>(arr: T[] | null) =>
+      seasonMatchIds ? (arr ?? []).filter((r) => seasonMatchIds!.has(r.match_id)) : (arr ?? [])
 
-    const [
-      { data: goals },
-      { data: cornersTaken },
-      { data: cornersHeaded },
-      { data: cards },
-      { data: motms },
-      { data: matchPlayers },
-      { data: finishedMatches },
-    ] = await Promise.all([
-      applyFilter(supabase.from('goals').select('player_id, is_corner_goal, match_id'), matchIds),
-      applyFilter(supabase.from('corners').select('taker_id, match_id'), matchIds),
-      applyFilter(supabase.from('corners').select('header_id, match_id'), matchIds),
-      applyFilter(supabase.from('cards').select('player_id, card_type, match_id'), matchIds),
-      applyFilter(supabase.from('motm').select('player_id, match_id'), matchIds),
-      applyFilter(supabase.from('match_players').select('player_id, match_id'), matchIds),
-      applyFilter(
-        supabase.from('matches').select('id, is_home_game, rbfa_home_score, rbfa_away_score, manual_home_score, manual_away_score').eq('state', 'finished'),
-        matchIds
-      ),
-    ])
+    const goals = fs(allGoals)
+    const cornersTaken = fs(allCornersTaken)
+    const cornersHeaded = fs(allCornersHeaded)
+    const cards = fs(allCards)
+    const motms = fs(allMotms)
+    const matchPlayers = fs(allMatchPlayers)
+    const finishedMatches = seasonMatchIds
+      ? (allFinishedMatches ?? []).filter((m) => seasonMatchIds!.has(m.id))
+      : (allFinishedMatches ?? [])
 
     // Build a map of match_id -> result for our team
     type MatchResult = 'win' | 'draw' | 'loss'
@@ -210,17 +221,23 @@ export default function SpelersPage() {
       {!loading && players.length > 0 && (
         <div className="px-4 mb-3 flex gap-1.5 flex-wrap">
           {([
-            { key: 'goals', label: 'Goals' },
-            { key: 'games_played', label: 'Gespeeld' },
-            { key: 'motm_count', label: 'MOTM' },
-            { key: 'corners_taken', label: 'Corners' },
-            { key: 'yellow_cards', label: 'Geel' },
-          ] as const).map(({ key, label }) => (
-            <button key={key} onClick={() => setSortBy(key)}
-              className={`text-xs px-3 py-1 rounded-full transition-colors ${sortBy === key ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-semibold' : 'bg-[var(--surface)] text-[var(--subtle)] border border-[var(--border)]'}`}>
-              {label}
-            </button>
-          ))}
+{ key: 'none', label: '' }] as const)
+          // replaced by dropdown below
+          .filter(() => false).map(({ key, label }) => <span key={key}>{label}</span>)}
+        <div className="relative inline-block w-full">
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="w-full appearance-none bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-4 pr-8 py-2 text-sm font-semibold focus:outline-none focus:border-[var(--sand)] cursor-pointer">
+            <option value="none">Alfabetisch</option>
+            <option value="games_played">Meest gespeeld</option>
+            <option value="goals">Meeste goals</option>
+            <option value="wins">Meeste overwinningen</option>
+            <option value="win_pct">Beste winstpercentage</option>
+            <option value="motm_count">Meeste MOTM</option>
+            <option value="corners_taken">Meeste corners genomen</option>
+            <option value="yellow_cards">Meeste gele kaarten</option>
+          </select>
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
         </div>
       )}
 
@@ -238,7 +255,15 @@ export default function SpelersPage() {
             </button>
           </div>
         ) : (
-          [...stats].sort((a, b) => (b[sortBy] ?? 0) - (a[sortBy] ?? 0)).map((s, idx) => {
+          [...stats].sort((a, b) => {
+            if (sortBy === 'none') return `${a.player.last_name} ${a.player.first_name}`.localeCompare(`${b.player.last_name} ${b.player.first_name}`)
+            if (sortBy === 'win_pct') {
+              const pctA = (a.games_played ?? 0) > 0 ? (a.wins ?? 0) / (a.games_played ?? 1) : 0
+              const pctB = (b.games_played ?? 0) > 0 ? (b.wins ?? 0) / (b.games_played ?? 1) : 0
+              return pctB - pctA
+            }
+            return (b[sortBy as keyof typeof b] as number ?? 0) - (a[sortBy as keyof typeof a] as number ?? 0)
+          }).map((s, idx) => {
             const hasStats = s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
             return (
               <div key={s.player.id} onClick={() => setSelectedPlayer(s)} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] cursor-pointer">
