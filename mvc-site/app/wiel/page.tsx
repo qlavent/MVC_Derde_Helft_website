@@ -172,7 +172,7 @@ export default function WielPage() {
             onChange={(e) => setNewItem(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addItem()}
             placeholder="Nieuw item..."
-            className="flex-1 bg-[var(--surface)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--subtle2)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
+            className="flex-1 bg-[var(--surface)] rounded-xl px-4 py-3 text-sm text-[var(--fg)] placeholder-[var(--subtle)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
           />
           <button onClick={addItem} disabled={!newItem.trim()} className="bg-[var(--sand)] text-black rounded-xl px-4 disabled:opacity-40">
             <Plus size={18} />
