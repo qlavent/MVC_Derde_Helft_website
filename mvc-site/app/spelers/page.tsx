@@ -40,6 +40,7 @@ export default function SpelersPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
+  const [sortBy, setSortBy] = useState<'goals' | 'games_played' | 'motm_count' | 'yellow_cards' | 'corners_taken'>('goals')
 
   useEffect(() => {
     loadPlayers()
@@ -205,6 +206,24 @@ export default function SpelersPage() {
         <span className="text-xs text-[var(--subtle)]">{players.length} spelers</span>
       </div>
 
+      {/* Sort pills */}
+      {!loading && players.length > 0 && (
+        <div className="px-4 mb-3 flex gap-1.5 flex-wrap">
+          {([
+            { key: 'goals', label: 'Goals' },
+            { key: 'games_played', label: 'Gespeeld' },
+            { key: 'motm_count', label: 'MOTM' },
+            { key: 'corners_taken', label: 'Corners' },
+            { key: 'yellow_cards', label: 'Geel' },
+          ] as const).map(({ key, label }) => (
+            <button key={key} onClick={() => setSortBy(key)}
+              className={`text-xs px-3 py-1 rounded-full transition-colors ${sortBy === key ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-semibold' : 'bg-[var(--surface)] text-[var(--subtle)] border border-[var(--border)]'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="px-4 space-y-3 pb-28">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -219,11 +238,12 @@ export default function SpelersPage() {
             </button>
           </div>
         ) : (
-          stats.map((s) => {
+          [...stats].sort((a, b) => (b[sortBy] ?? 0) - (a[sortBy] ?? 0)).map((s, idx) => {
             const hasStats = s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
             return (
               <div key={s.player.id} onClick={() => setSelectedPlayer(s)} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] cursor-pointer">
                 <div className="flex items-center gap-3 mb-3">
+                  <span className="text-[10px] font-black text-[var(--subtle2)] w-5 flex-shrink-0 text-right">#{idx + 1}</span>
                   <div className="w-9 h-9 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-[var(--sand)]">
                       {s.player.first_name[0]}{s.player.last_name[0]}
@@ -287,6 +307,7 @@ export default function SpelersPage() {
                 <span className="text-[8px] text-center text-[var(--subtle)] leading-tight">{s.player.first_name}</span>
               </button>
             ))}
+            <div className="h-28" />
           </div>
 
           {/* Stats detail */}

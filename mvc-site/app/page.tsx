@@ -94,27 +94,33 @@ export default async function HomePage() {
 
       {/* Recent results */}
       {(recentMatches?.length ?? 0) > 0 && (
-        <section className="mb-4">
-          <div className="flex items-center justify-between mb-2 px-4">
+        <section className="px-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none">
-            {recentMatches?.map((m) => (
-              <Link key={m.id} href={`/wedstrijden/${m.id}`} className="flex-shrink-0 w-44">
-                <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors h-full">
-                  <p className="text-[10px] text-[var(--subtle)] mb-1 text-center">
-                    {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM', { locale: nl }) })()}
-                  </p>
-                  <p className="text-xs font-semibold text-center mb-1 truncate">{m.is_home_game ? m.away_team_name : m.home_team_name}</p>
-                  {(m.manual_home_score ?? m.rbfa_home_score) !== null && (
-                    <p className="text-center text-sm font-black text-[var(--sand)]">
-                      {m.manual_home_score ?? m.rbfa_home_score} – {m.manual_away_score ?? m.rbfa_away_score}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            ))}
+          <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '11rem' }}>
+            {recentMatches?.slice(0, 5).map((m) => {
+              const r = new Date(m.start_time)
+              const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
+              const opponent = m.is_home_game ? m.away_team_name : m.home_team_name
+              const ourScore = m.is_home_game ? (m.manual_home_score ?? m.rbfa_home_score) : (m.manual_away_score ?? m.rbfa_away_score)
+              const theirScore = m.is_home_game ? (m.manual_away_score ?? m.rbfa_away_score) : (m.manual_home_score ?? m.rbfa_home_score)
+              const result = ourScore !== null && theirScore !== null ? (ourScore > theirScore ? 'W' : ourScore === theirScore ? 'G' : 'V') : null
+              const resultColor = result === 'W' ? 'text-green-400' : result === 'V' ? 'text-red-400' : 'text-[var(--subtle)]'
+              return (
+                <Link key={m.id} href={`/wedstrijden/${m.id}`}>
+                  <div className="bg-[var(--surface)] rounded-xl px-3 py-2.5 border border-[var(--border)] hover:border-[var(--sand)] transition-colors flex items-center gap-2">
+                    {result && <span className={`text-xs font-black w-4 flex-shrink-0 ${resultColor}`}>{result}</span>}
+                    <span className="text-xs flex-1 truncate text-[var(--fg)]">{opponent}</span>
+                    {ourScore !== null && (
+                      <span className="text-xs font-black text-[var(--sand)] flex-shrink-0">{ourScore}–{theirScore}</span>
+                    )}
+                    <span className="text-[10px] text-[var(--subtle)] flex-shrink-0">{format(d, 'd MMM', { locale: nl })}</span>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </section>
       )}
