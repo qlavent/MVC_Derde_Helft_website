@@ -185,7 +185,14 @@ export default function SpelersPage() {
         </button>
       </div>
 
-      {/* Season selector + Rankings link */}
+      {/* Rankings shortcut */}
+      <div className="px-4 mb-2">
+        <Link href="/rankings" className="flex items-center gap-2 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 w-fit">
+          <Trophy size={12} /> Bekijk rangschikking
+        </Link>
+      </div>
+
+      {/* Season selector */}
       <div className="px-4 mb-4 flex items-center gap-3 flex-wrap">
         <div className="relative inline-block">
           <select
@@ -201,12 +208,6 @@ export default function SpelersPage() {
           <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--subtle)] pointer-events-none" />
         </div>
         <span className="text-xs text-[var(--subtle)]">{players.length} spelers</span>
-        <Link
-          href="/rankings"
-          className="ml-auto flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5"
-        >
-          <Trophy size={12} /> Rangschikking
-        </Link>
       </div>
 
       <div className="px-4 space-y-3 pb-6">

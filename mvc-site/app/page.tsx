@@ -113,7 +113,7 @@ export default async function HomePage() {
                     <span className="text-sm flex-1 text-right truncate">{m.away_team_name}</span>
                   </div>
                   <p className="text-xs text-[var(--subtle2)] mt-1 text-center">
-                    {format(new Date(m.start_time), 'd MMM yyyy', { locale: nl })}
+                    {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM yyyy', { locale: nl }) })()}
                   </p>
                 </div>
               </Link>

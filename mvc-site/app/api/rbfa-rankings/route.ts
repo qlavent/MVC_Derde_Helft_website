@@ -1,75 +1,67 @@
 import { NextResponse } from 'next/server'
-import { rbfaQuery, TEAM_ID } from '@/lib/rbfa'
-import { createClient } from '@supabase/supabase-js'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const RBFA_API = 'https://datalake-prod2018.rbfa.be/graphql'
+const TEAM_ID = '345149'
 
-const SERIES_RANKINGS_QUERY = `
-  query GetSeriesRankings($seriesId: ID!) {
-    seriesRankings(seriesId: $seriesId, language: nl) {
-      rankings {
-        teams {
-          id
-          name
-          logo
-          position
-          points
-          gamesPlayed
-          wins
-          draws
-          losses
-          goalsFor
-          goalsAgainst
-        }
-      }
-    }
-  }
-`
-
-const TEAM_SERIES_QUERY = `
-  query {
-    teamSeriesAndRankings(teamId: "${TEAM_ID}", language: nl) {
-      series { name serieId }
-    }
-  }
-`
+async function rbfaQuery(query: string) {
+  const res = await fetch(RBFA_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+    next: { revalidate: 3600 },
+  })
+  const json = await res.json()
+  if (json.errors) throw new Error(JSON.stringify(json.errors))
+  return json.data
+}
 
 export async function GET() {
   try {
-    // 1. Get all series for our team
-    const seriesData = await rbfaQuery(TEAM_SERIES_QUERY)
-    const seriesList: Array<{ name: string; serieId: string }> =
-      seriesData?.teamSeriesAndRankings?.series ?? []
-
-    // 2. For each series, fetch the full rankings
-    const rankingsPerSeries = await Promise.all(
-      seriesList.map(async (s) => {
-        try {
-          const data = await rbfaQuery(SERIES_RANKINGS_QUERY, { seriesId: s.serieId })
-          const teams = data?.seriesRankings?.rankings?.[0]?.teams ?? []
-          return { serieId: s.serieId, name: s.name, teams }
-        } catch {
-          return { serieId: s.serieId, name: s.name, teams: [] }
+    const seriesData = await rbfaQuery(`
+      query {
+        teamSeriesAndRankings(teamId: "${TEAM_ID}", language: nl) {
+          series { name serieId }
+          rankings { rankings { teams { name logo position points } } }
         }
-      })
+      }
+    `)
+
+    const { series, rankings } = seriesData.teamSeriesAndRankings
+
+    const calData = await rbfaQuery(`
+      query {
+        teamCalendar(teamId: "${TEAM_ID}", language: nl, sortByDate: asc) {
+          id state homeTeam { id } awayTeam { id }
+          outcome { homeTeamGoals awayTeamGoals }
+        }
+      }
+    `)
+
+    const finished = (calData.teamCalendar ?? []).filter((m: { state: string; outcome: unknown }) =>
+      m.state === 'finished' && m.outcome
     )
 
-    // 3. Load our finished matches from Supabase for H2H + form
-    const { data: finishedMatches } = await supabaseAdmin
-      .from('matches')
-      .select('id, home_team_name, away_team_name, home_team_rbfa_id, away_team_rbfa_id, is_home_game, rbfa_home_score, rbfa_away_score, manual_home_score, manual_away_score, start_time, state')
-      .eq('state', 'finished')
-      .order('start_time', { ascending: false })
+    const last5 = finished.slice(-5).map((m: { homeTeam: { id: string }; outcome: { homeTeamGoals: number; awayTeamGoals: number } }) => {
+      const isHome = m.homeTeam.id === TEAM_ID
+      const our = isHome ? m.outcome.homeTeamGoals : m.outcome.awayTeamGoals
+      const their = isHome ? m.outcome.awayTeamGoals : m.outcome.homeTeamGoals
+      return our > their ? 'W' : our === their ? 'G' : 'V'
+    })
+
+    let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0
+    for (const m of finished as { homeTeam: { id: string }; outcome: { homeTeamGoals: number; awayTeamGoals: number } }[]) {
+      const isHome = m.homeTeam.id === TEAM_ID
+      const our = isHome ? m.outcome.homeTeamGoals : m.outcome.awayTeamGoals
+      const their = isHome ? m.outcome.awayTeamGoals : m.outcome.homeTeamGoals
+      goalsFor += our; goalsAgainst += their
+      if (our > their) wins++; else if (our === their) draws++; else losses++
+    }
 
     return NextResponse.json({
-      series: rankingsPerSeries,
-      ourMatches: finishedMatches ?? [],
+      series, rankings,
+      ourStats: { played: finished.length, wins, draws, losses, goalsFor, goalsAgainst, points: wins * 3 + draws, form: last5 },
     })
   } catch (err) {
-    console.error('rbfa-rankings error:', err)
-    return NextResponse.json({ error: 'Failed to load rankings' }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }

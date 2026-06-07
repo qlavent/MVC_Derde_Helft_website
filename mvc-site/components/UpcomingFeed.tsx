@@ -34,8 +34,8 @@ export default function UpcomingFeed() {
   }
 
   const merged = [
-    ...matches.map((m) => ({ type: 'match' as const, time: new Date(m.start_time), data: m })),
-    ...events.map((e) => ({ type: 'event' as const, time: new Date(e.start_time), data: e })),
+    ...matches.map((m) => { const r = new Date(m.start_time); const t = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return { type: 'match' as const, time: t, data: m } }),
+    ...events.map((e) => { const r = new Date(e.start_time); const t = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return { type: 'event' as const, time: t, data: e } }),
   ].sort((a, b) => a.time.getTime() - b.time.getTime())
 
   if (merged.length === 0) return null
