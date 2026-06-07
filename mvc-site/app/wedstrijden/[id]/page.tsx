@@ -428,8 +428,8 @@ export default function MatchDetailPage() {
 
 function ModalWrapper({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center" onClick={onClose}>
-      <div className="bg-[var(--surface)] rounded-t-3xl w-full max-w-lg p-6 pb-10" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-bold">{title}</h3>
           <button onClick={onClose}><X size={20} className="text-[var(--subtle)]" /></button>
