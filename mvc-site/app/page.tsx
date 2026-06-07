@@ -99,10 +99,10 @@ export default async function HomePage() {
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {recentMatches?.map((m) => (
               <Link key={m.id} href={`/wedstrijden/${m.id}`}>
-                <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
+                <div className="bg-[var(--surface)] rounded-xl p-4 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm flex-1 truncate">{m.home_team_name}</span>
                     {(m.manual_home_score ?? m.rbfa_home_score) !== null && (
