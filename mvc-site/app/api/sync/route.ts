@@ -82,7 +82,7 @@ export async function POST() {
     }
     results.push(`${matches.length} wedstrijden gesynchroniseerd`)
 
-    // 3. Sync cards for matches in time window (1h before to 4h after)
+    // 3. Sync lineup + cards for all finished matches (lineup) and time-window matches (cards)
     const now = new Date()
     const windowMatches = matches.filter((m: { startTime: string }) => {
       const start = new Date(m.startTime)
@@ -90,11 +90,19 @@ export async function POST() {
       return diffMs >= -3600000 && diffMs <= 14400000
     })
 
-    for (const m of windowMatches) {
+    for (const m of matches) {
       const detail = await rbfaQuery(`
         query {
           matchDetail(matchId: "${m.id}", language: nl) {
-            id state
+            id state homeTeam { id } awayTeam { id }
+            lineup {
+              home { id firstName lastName shirtNumber }
+              away { id firstName lastName shirtNumber }
+            }
+            substitutes {
+              home { id firstName lastName shirtNumber }
+              away { id firstName lastName shirtNumber }
+            }
             events {
               ... on GroupedEvents {
                 home { kind minute lastName firstName teamId }
@@ -107,6 +115,25 @@ export async function POST() {
 
       const { data: matchRow } = await supabase.from('matches').select('id').eq('rbfa_id', m.id).single()
       if (!matchRow) continue
+
+      // Sync lineup (starters + subs) as match_players
+      const homeId = detail.matchDetail?.homeTeam?.id
+      const ourSide = homeId === OUR_TEAM_RBFA_ID ? 'home' : 'away'
+      const lineupRows: { id: string }[] = [
+        ...(detail.matchDetail?.lineup ?? []).map((g: { home?: { id: string }; away?: { id: string } }) => g[ourSide]).filter(Boolean),
+        ...(detail.matchDetail?.substitutes ?? []).map((g: { home?: { id: string }; away?: { id: string } }) => g[ourSide]).filter(Boolean),
+      ]
+      for (const lp of lineupRows) {
+        const { data: player } = await supabase.from('players').select('id').eq('rbfa_id', lp.id).maybeSingle()
+        if (!player) continue
+        await supabase.from('match_players').upsert(
+          { match_id: matchRow.id, player_id: player.id, source: 'rbfa' },
+          { onConflict: 'match_id,player_id', ignoreDuplicates: true }
+        )
+      }
+
+      // Only sync cards for matches in time window
+      if (!windowMatches.some((wm: { id: string }) => wm.id === m.id)) continue
 
       const events = detail.matchDetail?.events ?? []
       for (const group of events) {
