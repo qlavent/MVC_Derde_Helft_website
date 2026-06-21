@@ -89,6 +89,7 @@ export interface CalendarEvent {
 
 export interface PlayerStats {
   player: Player
+  games_played: number
   goals: number
   corner_goals: number
   corners_taken: number

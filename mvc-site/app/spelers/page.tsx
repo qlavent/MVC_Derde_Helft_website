@@ -38,6 +38,7 @@ export default function SpelersPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
 
   useEffect(() => {
     loadPlayers()
@@ -85,17 +86,20 @@ export default function SpelersPage() {
       { data: cornersHeaded },
       { data: cards },
       { data: motms },
+      { data: matchPlayers },
     ] = await Promise.all([
       applyFilter(supabase.from('goals').select('player_id, is_corner_goal, match_id'), matchIds),
       applyFilter(supabase.from('corners').select('taker_id, match_id'), matchIds),
       applyFilter(supabase.from('corners').select('header_id, match_id'), matchIds),
       applyFilter(supabase.from('cards').select('player_id, card_type, match_id'), matchIds),
       applyFilter(supabase.from('motm').select('player_id, match_id'), matchIds),
+      applyFilter(supabase.from('match_players').select('player_id, match_id'), matchIds),
     ])
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const computed: PlayerStats[] = players.map((p) => ({
       player: p,
+      games_played: (matchPlayers ?? []).filter((mp: any) => mp.player_id === p.id).length,
       goals: (goals ?? []).filter((g: any) => g.player_id === p.id).length,
       corner_goals: (goals ?? []).filter((g: any) => g.player_id === p.id && g.is_corner_goal).length,
       corners_taken: (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id).length,
@@ -171,36 +175,85 @@ export default function SpelersPage() {
             </button>
           </div>
         ) : (
-          stats.map((s) => {
-            const hasStats = s.goals > 0 || s.corners_taken > 0 || s.corners_headed > 0 || s.yellow_cards > 0 || s.red_cards > 0 || s.motm_count > 0
-            return (
-              <div key={s.player.id} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-[var(--sand)]">
-                      {s.player.first_name[0]}{s.player.last_name[0]}
-                    </span>
-                  </div>
-                  <p className="text-sm font-bold flex-1">{s.player.first_name} {s.player.last_name}</p>
-                  {s.motm_count > 0 && (
-                    <span className="text-xs text-yellow-400">⭐ {s.motm_count}×</span>
-                  )}
+          stats.map((s) => (
+            <div
+              key={s.player.id}
+              className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] cursor-pointer hover:border-[var(--sand)] transition-colors"
+              onClick={() => setSelectedPlayer(s)}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-[var(--sand)]">
+                    {s.player.first_name[0]}{s.player.last_name[0]}
+                  </span>
                 </div>
-                {hasStats ? (
-                  <div className="flex flex-wrap gap-2">
-                    <StatBadge value={s.goals} label="goals" color="text-[var(--sand)]" />
-                    <StatBadge value={s.corners_taken} label="corners" color="text-[var(--olive)]" />
-                    <StatBadge value={s.corners_headed} label="koppen" color="text-[var(--olive)]" />
-                    <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
-                    <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
-                  </div>
-                ) : (
-                  <p className="text-xs text-[var(--subtle2)]">Nog geen statistieken dit seizoen</p>
+                <p className="text-sm font-bold flex-1">{s.player.first_name} {s.player.last_name}</p>
+                {s.motm_count > 0 && (
+                  <span className="text-xs text-yellow-400">⭐ {s.motm_count}×</span>
                 )}
               </div>
-            )
-          })
+              <div className="flex flex-wrap gap-2">
+                <StatBadge value={s.goals} label="goals" color="text-[var(--sand)]" />
+                <StatBadge value={s.corners_taken} label="corners" color="text-[var(--olive)]" />
+                <StatBadge value={s.corners_headed} label="koppen" color="text-[var(--olive)]" />
+                <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
+                <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
+                {s.goals === 0 && s.corners_taken === 0 && s.corners_headed === 0 && s.yellow_cards === 0 && s.red_cards === 0 && s.motm_count === 0 && (
+                  <p className="text-xs text-[var(--subtle2)]">Nog geen statistieken</p>
+                )}
+              </div>
+            </div>
+          ))
         )}
+      </div>
+
+      {/* Player detail modal */}
+      {selectedPlayer && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4"
+          onClick={() => setSelectedPlayer(null)}
+        >
+          <div
+            className="bg-[var(--surface)] rounded-3xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0">
+                <span className="text-lg font-black text-[var(--sand)]">
+                  {selectedPlayer.player.first_name[0]}{selectedPlayer.player.last_name[0]}
+                </span>
+              </div>
+              <div>
+                <p className="text-lg font-black">{selectedPlayer.player.first_name} {selectedPlayer.player.last_name}</p>
+                {selectedPlayer.motm_count > 0 && <p className="text-xs text-yellow-400">⭐ {selectedPlayer.motm_count}× Man of the Match</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: selectedPlayer.games_played, label: 'Gespeeld', color: 'text-[var(--fg)]' },
+                { value: selectedPlayer.goals, label: 'Goals', color: 'text-[var(--sand)]' },
+                { value: selectedPlayer.corner_goals, label: 'Corner­doelpunten', color: 'text-[var(--sand)]' },
+                { value: selectedPlayer.corners_taken, label: 'Corners getrap', color: 'text-[var(--olive)]' },
+                { value: selectedPlayer.corners_headed, label: 'Corners gekopt', color: 'text-[var(--olive)]' },
+                { value: selectedPlayer.motm_count, label: 'Man of the Match', color: 'text-yellow-400' },
+                { value: selectedPlayer.yellow_cards, label: 'Gele kaarten', color: 'text-yellow-400' },
+                { value: selectedPlayer.red_cards, label: 'Rode kaarten', color: 'text-red-400' },
+              ].map(({ value, label, color }) => (
+                <div key={label} className="bg-[var(--muted)] rounded-2xl p-3 text-center">
+                  <p className={`text-2xl font-black tabular-nums ${color}`}>{value}</p>
+                  <p className="text-[9px] text-[var(--subtle)] mt-1 leading-tight">{label}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setSelectedPlayer(null)}
+              className="mt-5 w-full text-sm text-[var(--subtle)] py-2"
+            >
+              Sluiten
+            </button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   )
