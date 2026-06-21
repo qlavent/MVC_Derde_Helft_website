@@ -10,7 +10,6 @@ interface Props {
 }
 
 export default function MatchCard({ match, showLink = true, isNext = false }: Props) {
-  // RBFA times stored as Brussels local but treated as UTC — shift back for display
   const rawDate = new Date(match.start_time)
   const date = new Date(rawDate.getTime() + rawDate.getTimezoneOffset() * 60000)
   const homeScore = match.manual_home_score ?? match.rbfa_home_score

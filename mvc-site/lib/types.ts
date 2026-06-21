@@ -89,6 +89,10 @@ export interface CalendarEvent {
 
 export interface PlayerStats {
   player: Player
+  games_played: number
+  wins: number
+  draws: number
+  losses: number
   goals: number
   corner_goals: number
   corners_taken: number
@@ -96,8 +100,4 @@ export interface PlayerStats {
   yellow_cards: number
   red_cards: number
   motm_count: number
-  games_played: number
-  wins: number
-  draws: number
-  losses: number
 }

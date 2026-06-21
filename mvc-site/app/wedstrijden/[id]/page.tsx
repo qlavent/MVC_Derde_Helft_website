@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier } from '@/lib/types'
 import { format } from 'date-fns'
@@ -10,110 +10,6 @@ import { ChevronLeft, Plus, Shuffle, X } from 'lucide-react'
 import Link from 'next/link'
 
 type Tab = 'info' | 'doelpunten' | 'corners' | 'kaarten'
-
-function PreviousMeetings({ match }: { match: Match }) {
-  const router = useRouter()
-  const [prevMatches, setPrevMatches] = useState<Match[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      // Find the opponent RBFA id
-      const opponentRbfaId = match.is_home_game ? match.away_team_rbfa_id : match.home_team_rbfa_id
-      const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
-
-      let query = supabase
-        .from('matches')
-        .select('*')
-        .eq('state', 'finished')
-        .neq('id', match.id)
-        .order('start_time', { ascending: false })
-
-      if (opponentRbfaId) {
-        // Match by RBFA id (home or away)
-        const { data } = await supabase
-          .from('matches')
-          .select('*')
-          .eq('state', 'finished')
-          .neq('id', match.id)
-          .or(`home_team_rbfa_id.eq.${opponentRbfaId},away_team_rbfa_id.eq.${opponentRbfaId}`)
-          .order('start_time', { ascending: false })
-        setPrevMatches(data ?? [])
-      } else {
-        // Fallback: match by team name
-        const { data } = await query
-          .or(`home_team_name.ilike.%${opponentName}%,away_team_name.ilike.%${opponentName}%`)
-        setPrevMatches(data ?? [])
-      }
-      setLoading(false)
-    }
-    load()
-  }, [match])
-
-  if (loading) {
-    return (
-      <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-        <h3 className="text-sm font-semibold mb-3">Vorige ontmoetingen</h3>
-        <div className="space-y-2">
-          {[1, 2].map((i) => <div key={i} className="h-12 bg-[var(--muted)] rounded-xl animate-pulse" />)}
-        </div>
-      </div>
-    )
-  }
-
-  if (prevMatches.length === 0) return null
-
-  return (
-    <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-      <h3 className="text-sm font-semibold mb-3">Vorige ontmoetingen</h3>
-      <div className="space-y-2">
-        {prevMatches.map((m) => {
-          const home = m.manual_home_score ?? m.rbfa_home_score
-          const away = m.manual_away_score ?? m.rbfa_away_score
-          const ourScore = m.is_home_game ? home : away
-          const theirScore = m.is_home_game ? away : home
-          let outcome: 'win' | 'draw' | 'loss' | null = null
-          if (ourScore !== null && theirScore !== null) {
-            if (ourScore > theirScore) outcome = 'win'
-            else if (ourScore === theirScore) outcome = 'draw'
-            else outcome = 'loss'
-          }
-          const outcomeColors = {
-            win: 'bg-green-500/20 text-green-400 border-green-500/30',
-            draw: 'bg-[var(--muted)] text-[var(--subtle)] border-[var(--border)]',
-            loss: 'bg-red-500/20 text-red-400 border-red-500/30',
-          }
-          const outcomeLabels = { win: 'W', draw: 'G', loss: 'V' }
-
-          return (
-            <button
-              key={m.id}
-              onClick={() => router.push(`/wedstrijden/${m.id}`)}
-              className="w-full flex items-center gap-3 bg-[var(--muted)] rounded-xl px-3 py-2.5 text-left hover:bg-[var(--border)] transition-colors"
-            >
-              {outcome && (
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border flex-shrink-0 ${outcomeColors[outcome]}`}>
-                  {outcomeLabels[outcome]}
-                </span>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-[var(--subtle)] truncate">
-                  {(() => { const r = new Date(m.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'd MMM yyyy', { locale: nl }) })()} • {m.series_name ?? ''}
-                </p>
-                <p className="text-sm font-semibold truncate">
-                  {m.home_team_name} – {m.away_team_name}
-                </p>
-              </div>
-              <span className="text-sm font-black tabular-nums flex-shrink-0 text-[var(--sand)]">
-                {home ?? '?'}–{away ?? '?'}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -159,11 +55,7 @@ export default function MatchDetailPage() {
     setMatch(matchData)
     setPlayers(allPlayers ?? [])
     const selIds = new Set(matchPlayerRows?.map((r) => r.player_id) ?? [])
-    // If no RBFA selection exists, use full squad as default
-    const selected = selIds.size > 0
-      ? (allPlayers ?? []).filter((p) => selIds.has(p.id))
-      : (allPlayers ?? [])
-    setSelectedPlayers(selected)
+    setSelectedPlayers((allPlayers ?? []).filter((p) => selIds.has(p.id)))
     setGoals((goalData ?? []) as Goal[])
     setCorners((cornerData ?? []) as Corner[])
     setCards((cardData ?? []) as Card[])
@@ -260,7 +152,7 @@ export default function MatchDetailPage() {
 
       {/* Match header */}
       <div className="px-4 pb-4">
-        <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {(() => { const r = new Date(match.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'EEEE d MMM yyyy • HH:mm', { locale: nl }) })()}</p>
+        <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {format((() => { const r = new Date(match.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}</p>
 
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
@@ -284,7 +176,7 @@ export default function MatchDetailPage() {
                 </div>
               </div>
             ) : (
-              <span className="text-lg text-[var(--subtle)]">{(() => { const r = new Date(match.start_time); const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return format(d, 'HH:mm') })()}</span>
+              <span className="text-lg text-[var(--subtle)]">{format((() => { const r = new Date(match.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'HH:mm')}</span>
             )}
             {match.rbfa_home_score !== null && (
               <p className="text-[10px] text-[var(--subtle2)] mt-1">Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}</p>
@@ -316,9 +208,6 @@ export default function MatchDetailPage() {
         {/* INFO TAB */}
         {tab === 'info' && (
           <>
-            {/* Previous meetings (upcoming matches only) */}
-            {match.state === 'upcoming' && <PreviousMeetings match={match} />}
-
             {/* Selection */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
@@ -377,6 +266,25 @@ export default function MatchDetailPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Instagram */}
+            <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+              <h3 className="text-sm font-semibold mb-2">📸 Instagram post</h3>
+              <input
+                type="url"
+                placeholder="https://instagram.com/p/..."
+                defaultValue={match.instagram_post_url ?? ''}
+                onBlur={async (e) => {
+                  await supabase.from('matches').update({ instagram_post_url: e.target.value || null }).eq('id', id)
+                }}
+                className="w-full bg-[var(--muted)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder-[var(--subtle)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
+              />
+              {match.instagram_post_url && (
+                <a href={match.instagram_post_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--sand)] mt-2 block">
+                  Bekijk post →
+                </a>
+              )}
             </div>
           </>
         )}

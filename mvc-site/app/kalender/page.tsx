@@ -88,7 +88,7 @@ export default function KalenderPage() {
   const firstDayOffset = (startOfMonth(currentMonth).getDay() + 6) % 7
 
   function getItemsForDay(date: Date) {
-    const matchesOnDay = matches.filter((m) => isSameDay(new Date(m.start_time), date))
+    const matchesOnDay = matches.filter((m) => { const r = new Date(m.start_time); return isSameDay(new Date(r.getTime() + r.getTimezoneOffset() * 60000), date) })
     const eventsOnDay = events.filter((e) => isSameDay(new Date(e.start_time), date))
     return { matchesOnDay, eventsOnDay }
   }
@@ -178,7 +178,7 @@ export default function KalenderPage() {
       </div>
 
       {/* Events list */}
-      <section className="px-4 mb-6 pb-28">
+      <section className="px-4 mb-6">
         <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-3">
           {format(currentMonth, 'MMMM', { locale: nl })}
         </h2>
@@ -192,7 +192,7 @@ export default function KalenderPage() {
                   <div className="flex-1">
                     <p className="text-xs text-[var(--sand)] font-semibold mb-0.5">⚽ Wedstrijd</p>
                     <p className="text-sm font-semibold">{m.home_team_name} vs {m.away_team_name}</p>
-                    <p className="text-xs text-[var(--subtle)]">{format(new Date(m.start_time), 'EEEE d MMM • HH:mm', { locale: nl })}</p>
+                    <p className="text-xs text-[var(--subtle)]">{format((() => { const r = new Date(m.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'EEEE d MMM • HH:mm', { locale: nl })}</p>
                   </div>
                   <a
                     href={`/api/calendar.ics?match=${m.id}`}

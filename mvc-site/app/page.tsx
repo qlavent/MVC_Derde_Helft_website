@@ -43,13 +43,10 @@ async function getRbfaMatches(): Promise<Match[]> {
 }
 
 async function getData() {
-  const now = new Date().toISOString()
-
   const [{ data: recentMatches }] = await Promise.all([
     supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
   ])
 
-  // If Supabase is empty, fall back to RBFA API directly
   const hasSupabaseData = (recentMatches?.length ?? 0) > 0
   if (!hasSupabaseData) {
     const rbfa = await getRbfaMatches()
@@ -66,67 +63,92 @@ export default async function HomePage() {
   const { recentMatches } = await getData()
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="px-4 pt-12 pb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: 'var(--sand)' }}>
-              <img src="/logo.jpg" alt="MVC Den Derde Helft" className="w-full h-full object-cover" />
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
+      {/* Fixed top section */}
+      <div className="flex-shrink-0">
+        {/* Header */}
+        <div className="px-4 pt-12 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: 'var(--sand)' }}>
+                <img src="/logo.jpg" alt="MVC Den Derde Helft" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tight leading-none">Den Derde Helft</h1>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--subtle)' }}>Minivoetbal kern Deinze</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight leading-none">Den Derde Helft</h1>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--subtle)' }}>Minivoetbal kern Deinze</p>
-            </div>
+            <ThemeToggle />
           </div>
-          <ThemeToggle />
         </div>
-      </div>
 
-      {/* Kit carrier banner — client component, auto-refreshes every 30s */}
-      <KitCarrierBanner />
+        <KitCarrierBanner />
+        <LiveBanner />
+        <UpcomingFeed />
 
-      {/* Live match banner — client component, auto-refreshes every 30s */}
-      <LiveBanner />
-
-      {/* Upcoming — client component, auto-refreshes every 30s */}
-      <UpcomingFeed />
-
-      {/* Recent results */}
-      {(recentMatches?.length ?? 0) > 0 && (
-        <section className="px-4 mb-4">
-          <div className="flex items-center justify-between mb-2">
+        {(recentMatches?.length ?? 0) > 0 && (
+          <div className="px-4 pt-1 pb-2 flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-          <div className="space-y-2">
-            {recentMatches?.slice(0, 5).map((m) => {
-              const r = new Date(m.start_time)
-              const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
-              const opponent = m.is_home_game ? m.away_team_name : m.home_team_name
-              const ourScore = m.is_home_game ? (m.manual_home_score ?? m.rbfa_home_score) : (m.manual_away_score ?? m.rbfa_away_score)
-              const theirScore = m.is_home_game ? (m.manual_away_score ?? m.rbfa_away_score) : (m.manual_home_score ?? m.rbfa_home_score)
-              const result = ourScore !== null && theirScore !== null ? (ourScore > theirScore ? 'W' : ourScore === theirScore ? 'G' : 'V') : null
-              const resultColor = result === 'W' ? 'text-green-400' : result === 'V' ? 'text-red-400' : 'text-[var(--subtle)]'
-              return (
-                <Link key={m.id} href={`/wedstrijden/${m.id}`}>
-                  <div className="bg-[var(--surface)] rounded-xl px-3 py-2.5 border border-[var(--border)] hover:border-[var(--sand)] transition-colors flex items-center gap-2">
-                    {result && <span className={`text-xs font-black w-4 flex-shrink-0 ${resultColor}`}>{result}</span>}
-                    <span className="text-xs flex-1 truncate text-[var(--fg)]">{opponent}</span>
-                    {ourScore !== null && (
-                      <span className="text-xs font-black text-[var(--sand)] flex-shrink-0">{ourScore}–{theirScore}</span>
+        )}
+      </div>
+
+      {/* Scrollable results */}
+      {(recentMatches?.length ?? 0) > 0 && (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-3 pb-3 scrollbar-none">
+          {recentMatches?.slice(0, 5).map((m) => {
+            const r = new Date(m.start_time)
+            const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
+            const homeScore = m.manual_home_score ?? m.rbfa_home_score
+            const awayScore = m.manual_away_score ?? m.rbfa_away_score
+            const ourScore = m.is_home_game ? homeScore : awayScore
+            const theirScore = m.is_home_game ? awayScore : homeScore
+            const result = ourScore !== null && theirScore !== null ? (ourScore > theirScore ? 'W' : ourScore === theirScore ? 'G' : 'V') : null
+            const resultColor = result === 'W' ? 'bg-green-500/20 text-green-400' : result === 'V' ? 'bg-red-500/20 text-red-400' : 'bg-[var(--muted)] text-[var(--subtle)]'
+            const hasScore = homeScore !== null && awayScore !== null
+            return (
+              <Link key={m.id} href={`/wedstrijden/${m.id}`}>
+                <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-[var(--subtle)]">
+                      {format(d, 'EEEE d MMM yyyy', { locale: nl })}
+                    </span>
+                    {result && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${resultColor}`}>
+                        {result === 'W' ? 'Gewonnen' : result === 'G' ? 'Gelijkspel' : 'Verloren'}
+                      </span>
                     )}
-                    <span className="text-[10px] text-[var(--subtle)] flex-shrink-0">{format(d, 'd MMM', { locale: nl })}</span>
                   </div>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-sm font-semibold flex-1 truncate ${m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+                      {m.home_team_name}
+                    </span>
+                    {hasScore ? (
+                      <div className="flex items-center gap-1 bg-[var(--muted)] rounded-lg px-3 py-1 flex-shrink-0">
+                        <span className="text-lg font-bold tabular-nums">{homeScore}</span>
+                        <span className="text-[var(--subtle2)] mx-1">—</span>
+                        <span className="text-lg font-bold tabular-nums">{awayScore}</span>
+                      </div>
+                    ) : (
+                      <div className="w-12 flex-shrink-0" />
+                    )}
+                    <span className={`text-sm font-semibold flex-1 text-right truncate ${!m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+                      {m.away_team_name}
+                    </span>
+                  </div>
+                  {m.series_name && (
+                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5">{m.series_name}</p>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
       )}
 
-      {/* Quick links: Instagram + Wiel */}
-      <section className="px-4 mb-6">
+      {/* Fixed bottom: quick links — always visible above dock */}
+      <div className="flex-shrink-0 px-4 pt-2 pb-28">
         <div className="flex gap-3">
           <a href="https://www.instagram.com/mvc.den.derde.helft" target="_blank" rel="noopener noreferrer" className="flex-1">
             <div className="rounded-2xl p-4 flex items-center justify-center gap-2 font-bold text-sm text-white" style={{ background: 'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)' }}>
@@ -148,7 +170,7 @@ export default async function HomePage() {
             </div>
           </Link>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
