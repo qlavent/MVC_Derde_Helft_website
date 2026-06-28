@@ -87,6 +87,7 @@ export default function MatchDetailPage() {
 
   const displayHomeScore = match.is_home_game ? ourScore : opponentScore
   const displayAwayScore = match.is_home_game ? opponentScore : ourScore
+  const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
 
   async function addGoal(playerId: string) {
     await supabase.from('goals').insert({ match_id: id, player_id: playerId, is_corner_goal: false })
@@ -235,36 +236,16 @@ export default function MatchDetailPage() {
         {/* LIVE TAB */}
         {tab === 'live' && (
           <div className="space-y-4">
-            {/* Action buttons — mirrors scoreline: home left, away right */}
-            {match.state !== 'upcoming' && (
-              <div className="space-y-2">
-                {/* Row 1: goal buttons per team, aligned to their side */}
-                <div className="grid grid-cols-2 gap-2">
+            {/* Action buttons — two columns matching scoreline sides */}
+            {match.state !== 'upcoming' && (() => {
+              const ourCol = (
+                <div className="flex flex-col gap-2 flex-1">
                   <button
-                    onClick={match.is_home_game ? () => setShowGoalModal(true) : addOpponentGoal}
-                    className={`rounded-2xl py-5 font-bold text-sm flex flex-col items-start pl-4 gap-0.5 active:scale-95 transition-transform ${
-                      match.is_home_game
-                        ? 'bg-[var(--sand)] text-black'
-                        : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)]'
-                    }`}
+                    onClick={() => setShowGoalModal(true)}
+                    className="bg-[var(--sand)] text-black rounded-2xl py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
                   >
-                    <span className="text-xl">⚽</span>
-                    <span className="text-xs leading-tight truncate max-w-full pr-2">{match.home_team_name}</span>
+                    ⚽ Doelpunt
                   </button>
-                  <button
-                    onClick={match.is_home_game ? addOpponentGoal : () => setShowGoalModal(true)}
-                    className={`rounded-2xl py-5 font-bold text-sm flex flex-col items-end pr-4 gap-0.5 active:scale-95 transition-transform ${
-                      !match.is_home_game
-                        ? 'bg-[var(--sand)] text-black'
-                        : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)]'
-                    }`}
-                  >
-                    <span className="text-xl">⚽</span>
-                    <span className="text-xs leading-tight truncate max-w-full pl-2">{match.away_team_name}</span>
-                  </button>
-                </div>
-                {/* Row 2: secondary actions */}
-                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setShowCornerModal(true)}
                     className="bg-[var(--olive)] text-white rounded-2xl py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
@@ -278,8 +259,23 @@ export default function MatchDetailPage() {
                     🟨 Kaart
                   </button>
                 </div>
-              </div>
-            )}
+              )
+              const oppCol = (
+                <div className="flex flex-col gap-2 flex-1">
+                  <button
+                    onClick={addOpponentGoal}
+                    className="bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)] rounded-2xl py-4 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                  >
+                    ⚽ {opponentName}
+                  </button>
+                </div>
+              )
+              return (
+                <div className="flex gap-2">
+                  {match.is_home_game ? <>{ourCol}{oppCol}</> : <>{oppCol}{ourCol}</>}
+                </div>
+              )
+            })()}
 
             {/* Chat-style timeline */}
             {timeline.length === 0 ? (
@@ -297,8 +293,8 @@ export default function MatchDetailPage() {
                   if (ev.kind === 'goal') {
                     const g = ev.data as Goal
                     icon = '⚽'
-                    label = isOurs ? playerName(g.player) : 'Tegenstander'
-                    sublabel = isOurs ? 'Doelpunt' : 'Goal tegenstander'
+                    label = isOurs ? playerName(g.player) : opponentName
+                    sublabel = 'Doelpunt'
                     deleteFn = async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }
                   } else if (ev.kind === 'corner') {
                     const c = ev.data as Corner
