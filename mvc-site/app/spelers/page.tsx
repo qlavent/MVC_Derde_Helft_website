@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import type { Player, PlayerStats } from '@/lib/types'
+import type { Player, PlayerStats, CornerDuo } from '@/lib/types'
 import { ChevronDown, RefreshCw } from 'lucide-react'
 
 function getSeason(dateStr: string): string {
@@ -32,14 +31,18 @@ function StatBadge({ value, label, color }: { value: number; label: string; colo
   )
 }
 
+type PageTab = 'spelers' | 'duos'
+
 export default function SpelersPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [stats, setStats] = useState<PlayerStats[]>([])
+  const [cornerDuos, setCornerDuos] = useState<CornerDuo[]>([])
   const [seasons, setSeasons] = useState<string[]>([])
   const [selectedSeason, setSelectedSeason] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
+  const [pageTab, setPageTab] = useState<PageTab>('spelers')
   const [sortBy, setSortBy] = useState<'none' | 'goals' | 'games_played' | 'wins' | 'win_pct' | 'motm_count' | 'corners_taken' | 'yellow_cards'>('games_played')
 
   useEffect(() => {
@@ -73,21 +76,22 @@ export default function SpelersPage() {
     // Fetch ALL data then filter client-side by season (avoids DB IN query issues)
     const [
       { data: allGoals },
-      { data: allCornersTaken },
-      { data: allCornersHeaded },
+      { data: allCorners },
       { data: allCards },
       { data: allMotms },
       { data: allMatchPlayers },
       { data: allFinishedMatches },
     ] = await Promise.all([
       supabase.from('goals').select('player_id, is_corner_goal, match_id'),
-      supabase.from('corners').select('taker_id, match_id'),
-      supabase.from('corners').select('header_id, match_id'),
+      supabase.from('corners').select('taker_id, header_id, is_goal, match_id'),
       supabase.from('cards').select('player_id, card_type, match_id'),
       supabase.from('motm').select('player_id, match_id'),
       supabase.from('match_players').select('player_id, match_id'),
       supabase.from('matches').select('id, start_time, is_home_game, rbfa_home_score, rbfa_away_score, manual_home_score, manual_away_score').eq('state', 'finished'),
     ])
+
+    const allCornersTaken = allCorners
+    const allCornersHeaded = allCorners
 
     // Filter by season client-side
     let seasonMatchIds: Set<string> | null = null
@@ -106,14 +110,17 @@ export default function SpelersPage() {
       seasonMatchIds ? (arr ?? []).filter((r) => seasonMatchIds!.has(r.match_id)) : (arr ?? [])
 
     const goals = fs(allGoals)
-    const cornersTaken = fs(allCornersTaken)
-    const cornersHeaded = fs(allCornersHeaded)
+    const corners = fs(allCorners)
     const cards = fs(allCards)
     const motms = fs(allMotms)
     const matchPlayers = fs(allMatchPlayers)
     const finishedMatches = seasonMatchIds
       ? (allFinishedMatches ?? []).filter((m) => seasonMatchIds!.has(m.id))
       : (allFinishedMatches ?? [])
+
+    // Aliases for clarity
+    const cornersTaken = corners
+    const cornersHeaded = corners
 
     // Build a map of match_id -> result for our team
     type MatchResult = 'win' | 'draw' | 'loss'
@@ -142,16 +149,23 @@ export default function SpelersPage() {
       const draws = playedFinished.filter((mid: string) => matchResultMap.get(mid) === 'draw').length
       const losses = playedFinished.filter((mid: string) => matchResultMap.get(mid) === 'loss').length
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const playerCornersTaken = (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const playerCornersHeaded = (cornersHeaded ?? []).filter((c: any) => c.header_id === p.id)
+
       return {
         player: p,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         goals: (goals ?? []).filter((g: any) => g.player_id === p.id).length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         corner_goals: (goals ?? []).filter((g: any) => g.player_id === p.id && g.is_corner_goal).length,
+        corners_taken: playerCornersTaken.length,
+        corners_headed: playerCornersHeaded.length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        corners_taken: (cornersTaken ?? []).filter((c: any) => c.taker_id === p.id).length,
+        kicker_goals: playerCornersTaken.filter((c: any) => c.is_goal).length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        corners_headed: (cornersHeaded ?? []).filter((c: any) => c.header_id === p.id).length,
+        header_goals: playerCornersHeaded.filter((c: any) => c.is_goal).length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         yellow_cards: (cards ?? []).filter((c: any) => c.player_id === p.id && c.card_type === 'yellow').length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,6 +180,27 @@ export default function SpelersPage() {
     })
 
     setStats(computed.sort((a, b) => b.games_played - a.games_played || b.goals - a.goals || b.motm_count - a.motm_count))
+
+    // Build corner duo stats
+    const playerMap = new Map(players.map((p) => [p.id, p]))
+    const duoMap = new Map<string, { taker: Player; header: Player; total: number; goals: number }>()
+    for (const c of corners) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cc = c as any
+      if (!cc.taker_id || !cc.header_id) continue
+      const key = `${cc.taker_id}::${cc.header_id}`
+      const taker = playerMap.get(cc.taker_id)
+      const header = playerMap.get(cc.header_id)
+      if (!taker || !header) continue
+      const existing = duoMap.get(key) ?? { taker, header, total: 0, goals: 0 }
+      duoMap.set(key, { ...existing, total: existing.total + 1, goals: existing.goals + (cc.is_goal ? 1 : 0) })
+    }
+    const duos: CornerDuo[] = Array.from(duoMap.values())
+      .filter((d) => d.total >= 1)
+      .map((d) => ({ ...d, success_rate: d.goals / d.total }))
+      .sort((a, b) => b.success_rate - a.success_rate || b.total - a.total)
+    setCornerDuos(duos)
+
     setLoading(false)
   }
 
@@ -199,6 +234,22 @@ export default function SpelersPage() {
         </button>
       </div>
 
+      {/* Page tabs */}
+      <div className="px-4 mb-4 flex gap-2">
+        <button
+          onClick={() => setPageTab('spelers')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'spelers' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+        >
+          Spelers
+        </button>
+        <button
+          onClick={() => setPageTab('duos')}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'duos' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+        >
+          Corner duo&apos;s
+        </button>
+      </div>
+
       {/* Season selector */}
       <div className="px-4 mb-4 flex items-center gap-3 flex-wrap">
         <div className="relative inline-block">
@@ -217,31 +268,78 @@ export default function SpelersPage() {
         <span className="text-xs text-[var(--subtle)]">{players.length} spelers</span>
       </div>
 
-      {/* Sort pills */}
-      {!loading && players.length > 0 && (
-        <div className="px-4 mb-3 flex gap-1.5 flex-wrap">
-          {([
-{ key: 'none', label: '' }] as const)
-          // replaced by dropdown below
-          .filter(() => false).map(({ key, label }) => <span key={key}>{label}</span>)}
-        <div className="relative inline-block w-full">
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="w-full appearance-none bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-4 pr-8 py-2 text-sm font-semibold focus:outline-none focus:border-[var(--sand)] cursor-pointer">
-            <option value="none">Alfabetisch</option>
-            <option value="games_played">Meest gespeeld</option>
-            <option value="goals">Meeste goals</option>
-            <option value="wins">Meeste overwinningen</option>
-            <option value="win_pct">Beste winstpercentage</option>
-            <option value="motm_count">Meeste MOTM</option>
-            <option value="corners_taken">Meeste corners genomen</option>
-            <option value="yellow_cards">Meeste gele kaarten</option>
-          </select>
-          <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-        </div>
+      {/* Sort pills — only on spelers tab */}
+      {pageTab === 'spelers' && !loading && players.length > 0 && (
+        <div className="px-4 mb-3">
+          <div className="relative inline-block w-full">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-full appearance-none bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-4 pr-8 py-2 text-sm font-semibold focus:outline-none focus:border-[var(--sand)] cursor-pointer">
+              <option value="none">Alfabetisch</option>
+              <option value="games_played">Meest gespeeld</option>
+              <option value="goals">Meeste goals</option>
+              <option value="wins">Meeste overwinningen</option>
+              <option value="win_pct">Beste winstpercentage</option>
+              <option value="motm_count">Meeste MOTM</option>
+              <option value="corners_taken">Meeste corners genomen</option>
+              <option value="yellow_cards">Meeste gele kaarten</option>
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
         </div>
       )}
 
-      <div className="px-4 space-y-3 pb-28">
+      {/* Corner duo's tab */}
+      {pageTab === 'duos' && (
+        <div className="px-4 space-y-3 pb-28">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-[var(--surface)] rounded-2xl h-20 animate-pulse" />
+            ))
+          ) : cornerDuos.length === 0 ? (
+            <div className="text-center text-[var(--subtle2)] py-12">
+              <p className="text-3xl mb-2">🎯</p>
+              <p>Nog geen corner data</p>
+            </div>
+          ) : (
+            cornerDuos.map((duo, idx) => (
+              <div key={`${duo.taker.id}-${duo.header.id}`} className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-[10px] font-black text-[var(--subtle2)] w-5 flex-shrink-0 text-right">#{idx + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold">{duo.taker.first_name} {duo.taker.last_name}</span>
+                      <span className="text-[var(--olive)] text-xs">→</span>
+                      <span className="text-sm font-bold">{duo.header.first_name} {duo.header.last_name}</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--subtle)] mt-0.5">Nemer → Kopballer</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-2xl font-black text-[var(--sand)]">{Math.round(duo.success_rate * 100)}%</p>
+                    <p className="text-[9px] text-[var(--subtle)]">succes</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
+                    <p className="text-lg font-black text-[var(--olive)]">{duo.total}</p>
+                    <p className="text-[9px] text-[var(--subtle)]">corners</p>
+                  </div>
+                  <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
+                    <p className="text-lg font-black text-[var(--sand)]">{duo.goals}</p>
+                    <p className="text-[9px] text-[var(--subtle)]">goals</p>
+                  </div>
+                  <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
+                    <p className="text-lg font-black text-[var(--fg)]">{duo.total - duo.goals}</p>
+                    <p className="text-[9px] text-[var(--subtle)]">mislukt</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Spelers tab */}
+      {pageTab === 'spelers' && <div className="px-4 space-y-3 pb-28">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-[var(--surface)] rounded-2xl h-20 animate-pulse" />
@@ -310,7 +408,7 @@ export default function SpelersPage() {
             )
           })
         )}
-      </div>
+      </div>}
 
       {/* Player detail modal */}
       {selectedPlayer && (
@@ -357,10 +455,15 @@ export default function SpelersPage() {
               </div>
             </div>
 
-            {/* W/D/L */}
+            {/* W/D/L + win % */}
             {(selectedPlayer.games_played ?? 0) > 0 && (
               <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] mb-4">
-                <p className="text-xs text-[var(--subtle)] uppercase tracking-wide mb-3">Resultaten</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-[var(--subtle)] uppercase tracking-wide">Resultaten</p>
+                  <span className="text-xl font-black text-[var(--sand)]">
+                    {Math.round(((selectedPlayer.wins ?? 0) / (selectedPlayer.games_played ?? 1)) * 100)}%
+                  </span>
+                </div>
                 <div className="flex gap-3">
                   <div className="flex-1 text-center">
                     <p className="text-2xl font-black text-green-400">{selectedPlayer.wins ?? 0}</p>
@@ -382,22 +485,33 @@ export default function SpelersPage() {
             {(selectedPlayer.corners_taken > 0 || selectedPlayer.corners_headed > 0) && (
               <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)] mb-4">
                 <p className="text-xs text-[var(--subtle)] uppercase tracking-wide mb-3">Corners</p>
-                <div className="flex gap-3">
-                  <div className="flex-1 text-center">
-                    <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
-                    <p className="text-[10px] text-[var(--subtle)]">Genomen</p>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
-                    <p className="text-[10px] text-[var(--subtle)]">Gekopt</p>
-                  </div>
-                  {selectedPlayer.corner_goals > 0 && (
-                    <div className="flex-1 text-center">
-                      <p className="text-2xl font-black text-[var(--sand)]">{selectedPlayer.corner_goals}</p>
-                      <p className="text-[10px] text-[var(--subtle)]">Corner goals</p>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  {selectedPlayer.corners_taken > 0 && (
+                    <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
+                      <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
+                      <p className="text-[10px] text-[var(--subtle)]">Genomen</p>
+                      <p className="text-sm font-bold text-[var(--sand)] mt-1">
+                        {Math.round((selectedPlayer.kicker_goals / selectedPlayer.corners_taken) * 100)}%
+                      </p>
+                      <p className="text-[9px] text-[var(--subtle2)]">succes nemer</p>
+                    </div>
+                  )}
+                  {selectedPlayer.corners_headed > 0 && (
+                    <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
+                      <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
+                      <p className="text-[10px] text-[var(--subtle)]">Gekopt</p>
+                      <p className="text-sm font-bold text-[var(--sand)] mt-1">
+                        {Math.round((selectedPlayer.header_goals / selectedPlayer.corners_headed) * 100)}%
+                      </p>
+                      <p className="text-[9px] text-[var(--subtle2)]">succes kopballer</p>
                     </div>
                   )}
                 </div>
+                {selectedPlayer.corner_goals > 0 && (
+                  <div className="text-center bg-[var(--muted)] rounded-xl p-2">
+                    <span className="text-sm font-bold text-[var(--sand)]">{selectedPlayer.corner_goals} corner goals</span>
+                  </div>
+                )}
               </div>
             )}
 

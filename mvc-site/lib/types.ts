@@ -97,7 +97,17 @@ export interface PlayerStats {
   corner_goals: number
   corners_taken: number
   corners_headed: number
+  kicker_goals: number
+  header_goals: number
   yellow_cards: number
   red_cards: number
   motm_count: number
+}
+
+export interface CornerDuo {
+  taker: Player
+  header: Player
+  total: number
+  goals: number
+  success_rate: number
 }

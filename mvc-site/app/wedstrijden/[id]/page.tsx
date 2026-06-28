@@ -96,6 +96,11 @@ export default function MatchDetailPage() {
 
   async function addCorner(takerId: string, headerId: string, minute: number | null, isGoal: boolean) {
     await supabase.from('corners').insert({ match_id: id, taker_id: takerId, header_id: headerId, minute, is_goal: isGoal })
+    if (isGoal && match) {
+      const field = match.is_home_game ? 'manual_home_score' : 'manual_away_score'
+      const current = match.is_home_game ? (match.manual_home_score ?? 0) : (match.manual_away_score ?? 0)
+      await supabase.from('matches').update({ [field]: current + 1 }).eq('id', id)
+    }
     setShowCornerModal(false)
     fetchAll()
   }
@@ -163,16 +168,16 @@ export default function MatchDetailPage() {
           <div className="flex flex-col items-center">
             {match.state !== 'upcoming' ? (
               <div className="flex items-center gap-2">
-                <div className="flex flex-col items-center">
-                  <button onClick={() => updateScore('manual_home_score', 1)} className="text-[var(--sand)] text-xl leading-none mb-1">+</button>
+                <div className="flex flex-col items-center gap-1">
+                  <button onClick={() => updateScore('manual_home_score', 1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
                   <span className="text-3xl font-black tabular-nums">{homeScore ?? 0}</span>
-                  <button onClick={() => updateScore('manual_home_score', -1)} className="text-[var(--subtle2)] text-xl leading-none mt-1">−</button>
+                  <button onClick={() => updateScore('manual_home_score', -1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
                 </div>
                 <span className="text-[var(--subtle2)] text-xl">—</span>
-                <div className="flex flex-col items-center">
-                  <button onClick={() => updateScore('manual_away_score', 1)} className="text-[var(--sand)] text-xl leading-none mb-1">+</button>
+                <div className="flex flex-col items-center gap-1">
+                  <button onClick={() => updateScore('manual_away_score', 1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
                   <span className="text-3xl font-black tabular-nums">{awayScore ?? 0}</span>
-                  <button onClick={() => updateScore('manual_away_score', -1)} className="text-[var(--subtle2)] text-xl leading-none mt-1">−</button>
+                  <button onClick={() => updateScore('manual_away_score', -1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
                 </div>
               </div>
             ) : (
@@ -307,7 +312,12 @@ export default function MatchDetailPage() {
                     <p className="text-sm font-semibold">{playerName(g.player)}</p>
                     {g.is_corner_goal && <span className="text-xs text-[var(--olive)]">Corner goal</span>}
                   </div>
-                  {g.minute && <span className="text-xs text-[var(--subtle)]">{g.minute}&apos;</span>}
+                  <div className="flex items-center gap-3">
+                    {g.minute && <span className="text-xs text-[var(--subtle)]">{g.minute}&apos;</span>}
+                    <button onClick={async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -340,8 +350,13 @@ export default function MatchDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    {c.is_goal && <span className="text-xs bg-[var(--olive)]/30 text-[var(--olive)] px-2 py-0.5 rounded-full">⚽ Gescoord</span>}
-                    {c.minute && <span className="text-xs text-[var(--subtle)]">{c.minute}&apos;</span>}
+                    <div className="flex items-center gap-2">
+                      {c.is_goal && <span className="text-xs bg-[var(--olive)]/30 text-[var(--olive)] px-2 py-0.5 rounded-full">⚽ Gescoord</span>}
+                      {c.minute && <span className="text-xs text-[var(--subtle)]">{c.minute}&apos;</span>}
+                    </div>
+                    <button onClick={async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
               ))
@@ -367,9 +382,12 @@ export default function MatchDetailPage() {
                     <p className="text-sm font-semibold">{c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'}</p>
                     {c.source === 'rbfa' && <span className="text-xs text-[var(--subtle2)]">RBFA</span>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {c.minute && <span className="text-xs text-[var(--subtle)]">{c.minute}&apos;</span>}
                     <span className={`w-5 h-7 rounded-sm ${c.card_type === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
+                    <button onClick={async () => { await supabase.from('cards').delete().eq('id', c.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
               ))
