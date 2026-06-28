@@ -439,7 +439,8 @@ export default function MatchDetailPage() {
       {showGoalModal && (
         <GoalModal
           players={selectedPlayers}
-          onAdd={addGoal}
+          onAddGoal={addGoal}
+          onAddCorner={addCorner}
           onClose={() => setShowGoalModal(false)}
         />
       )}
@@ -486,9 +487,8 @@ export default function MatchDetailPage() {
 
 function ModalWrapper({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center px-0" onClick={onClose}>
-      <div className="bg-[var(--surface)] rounded-t-3xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-5" />
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-bold">{title}</h3>
           <button onClick={onClose}><X size={20} className="text-[var(--subtle)]" /></button>
@@ -499,24 +499,98 @@ function ModalWrapper({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-function GoalModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string) => void; onClose: () => void }) {
+function PlayerGrid({ players, selectedId, onSelect, accent = 'sand' }: {
+  players: Player[]
+  selectedId: string
+  onSelect: (id: string) => void
+  accent?: 'sand' | 'olive'
+}) {
+  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--olive)] text-white'
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {players.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => onSelect(p.id)}
+          className={`py-3 px-3 rounded-xl text-sm font-semibold text-left transition-colors leading-tight ${
+            selectedId === p.id ? activeCls : 'bg-[var(--muted)] text-[var(--fg)]'
+          }`}
+        >
+          {p.first_name}<br />
+          <span className="font-black">{p.last_name}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
+  players: Player[]
+  onAddGoal: (pid: string) => void
+  onAddCorner: (tid: string, hid: string, isGoal: boolean) => void
+  onClose: () => void
+}) {
+  const [scorerId, setScorerId] = useState('')
+  const [isCorner, setIsCorner] = useState(false)
+  const [takerId, setTakerId] = useState('')
+
+  function handleSave() {
+    if (isCorner) {
+      onAddCorner(takerId, scorerId, true)
+    } else {
+      onAddGoal(scorerId)
+    }
+  }
+
+  const canSave = scorerId && (!isCorner || takerId)
+
   return (
     <ModalWrapper title="⚽ Doelpunt" onClose={onClose}>
-      <p className="text-xs text-[var(--subtle)] mb-3">Wie scoorde?</p>
-      <div className="space-y-2 max-h-80 overflow-y-auto">
-        {players.length === 0 && (
-          <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
-        )}
-        {players.map((p) => (
+      {players.length === 0 ? (
+        <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs text-[var(--subtle)] mb-2">Wie scoorde?</p>
+            <PlayerGrid players={players} selectedId={scorerId} onSelect={setScorerId} accent="sand" />
+          </div>
+
+          {/* Corner toggle — only visible once scorer selected */}
+          {scorerId && (
+            <button
+              onClick={() => { setIsCorner((v) => !v); setTakerId('') }}
+              className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                isCorner ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'
+              }`}
+            >
+              🎯 {isCorner ? 'Corner goal (aan) — tik om uit te zetten' : 'Was dit een corner goal?'}
+            </button>
+          )}
+
+          {/* Taker picker — only when corner is on */}
+          {isCorner && (
+            <div>
+              <p className="text-xs text-[var(--subtle)] mb-2">
+                Wie nam de corner? <span className="text-red-400">*verplicht</span>
+              </p>
+              <PlayerGrid
+                players={players.filter((p) => p.id !== scorerId)}
+                selectedId={takerId}
+                onSelect={setTakerId}
+                accent="olive"
+              />
+            </div>
+          )}
+
           <button
-            key={p.id}
-            onClick={() => onAdd(p.id)}
-            className="w-full text-left px-4 py-4 bg-[var(--muted)] rounded-xl text-sm font-semibold hover:bg-[var(--border)] transition-colors active:scale-98"
+            disabled={!canSave}
+            onClick={handleSave}
+            className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40 transition-opacity"
           >
-            {p.first_name} {p.last_name}
+            {isCorner ? `⚽ Corner goal opslaan` : '⚽ Doelpunt opslaan'}
           </button>
-        ))}
-      </div>
+        </div>
+      )}
     </ModalWrapper>
   )
 }
@@ -530,20 +604,13 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
     <ModalWrapper title="🎯 Corner" onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Nemer</label>
-          <select value={takerId} onChange={(e) => setTakerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
-            <option value="">Kies nemer</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-          </select>
+          <p className="text-xs text-[var(--subtle)] mb-2">Nemer</p>
+          <PlayerGrid players={players} selectedId={takerId} onSelect={setTakerId} accent="olive" />
         </div>
         <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Kopballer</label>
-          <select value={headerId} onChange={(e) => setHeaderId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
-            <option value="">Kies kopballer</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-          </select>
+          <p className="text-xs text-[var(--subtle)] mb-2">Kopballer</p>
+          <PlayerGrid players={players} selectedId={headerId} onSelect={setHeaderId} accent="olive" />
         </div>
-        {/* Goal toggle — big buttons */}
         <div className="flex gap-3">
           <button
             onClick={() => setIsGoal(false)}
@@ -561,7 +628,7 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
         <button
           disabled={!takerId || !headerId}
           onClick={() => onAdd(takerId, headerId, isGoal)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40 active:scale-98"
+          className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
         >
           Opslaan
         </button>
@@ -576,13 +643,12 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
   return (
     <ModalWrapper title="Kaart" onClose={onClose}>
       <div className="space-y-4">
-        {/* Card type toggle */}
         <div className="flex gap-3">
           {(['yellow', 'red'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setCardType(t)}
-              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cardType === t ? 'ring-2 ring-[var(--sand)]' : ''} bg-[var(--muted)]`}
+              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors bg-[var(--muted)] ${cardType === t ? 'ring-2 ring-[var(--sand)]' : ''}`}
             >
               <span className={`w-5 h-7 rounded-sm ${t === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
               <span className="text-sm font-semibold">{t === 'yellow' ? 'Geel' : 'Rood'}</span>
@@ -590,20 +656,10 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
           ))}
         </div>
         <p className="text-xs text-[var(--subtle)]">Wie krijgt de kaart?</p>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {players.length === 0 && (
-            <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
-          )}
-          {players.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onAdd(p.id, cardType)}
-              className="w-full text-left px-4 py-3 bg-[var(--muted)] rounded-xl text-sm font-semibold hover:bg-[var(--border)] transition-colors"
-            >
-              {p.first_name} {p.last_name}
-            </button>
-          ))}
-        </div>
+        {players.length === 0 && (
+          <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+        )}
+        <PlayerGrid players={players} selectedId="" onSelect={(pid) => onAdd(pid, cardType)} accent="sand" />
       </div>
     </ModalWrapper>
   )
