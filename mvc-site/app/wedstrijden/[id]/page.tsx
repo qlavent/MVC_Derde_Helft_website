@@ -170,14 +170,20 @@ export default function MatchDetailPage() {
 
   const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
 
+  // Timezone fix: RBFA stores Belgian local time without tz info, so shift it
+  const matchDate = (() => {
+    const r = new Date(match.start_time)
+    return new Date(r.getTime() + r.getTimezoneOffset() * 60000)
+  })()
+  // Use corrected ts for both sorting and "has started" check — consistent with display
+  const matchStartTs = matchDate.getTime()
+
   // Build unified timeline, newest at top
   type TlItem =
     | { kind: 'goal'; data: Goal; isOurs: boolean; ts: number; rowKey: string }
     | { kind: 'corner'; data: Corner; isOurs: true; ts: number; rowKey: string }
     | { kind: 'card'; data: Card; isOurs: true; ts: number; rowKey: string }
     | { kind: 'sentinel'; label: string; ts: number; rowKey: string }
-
-  const matchStartTs = new Date(match.start_time).getTime()
 
   const timeline: TlItem[] = [
     ...goals.map((g, i) => ({
@@ -201,7 +207,7 @@ export default function MatchDetailPage() {
       ts: c.created_at ? new Date(c.created_at).getTime() : 2e13 + i,
       rowKey: `k-${c.id}`,
     })),
-    // Start sentinel: only once kickoff time has passed
+    // Start sentinel: only once corrected kickoff time has passed
     ...(Date.now() > matchStartTs
       ? [{ kind: 'sentinel' as const, label: 'Wedstrijd gestart', ts: matchStartTs, rowKey: 'sentinel-start' }]
       : []),
@@ -210,11 +216,6 @@ export default function MatchDetailPage() {
       ? [{ kind: 'sentinel' as const, label: 'Wedstrijd afgelopen', ts: Infinity, rowKey: 'sentinel-end' }]
       : []),
   ].sort((a, b) => b.ts - a.ts)
-
-  const matchDate = (() => {
-    const r = new Date(match.start_time)
-    return new Date(r.getTime() + r.getTimezoneOffset() * 60000)
-  })()
 
   return (
     <div className="min-h-screen">
