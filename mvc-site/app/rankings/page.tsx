@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import Image from 'next/image'
 
 interface Team { name: string; logo: string; position: number; points: number }
 interface Series { name: string; serieId: string }
@@ -11,7 +10,20 @@ interface OurStats { played: number; wins: number; draws: number; losses: number
 
 const OUR_TEAM = 'DERDE HELFT'
 
+function currentSeasonYear(): number {
+  const now = new Date()
+  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+}
+
+function seasonLabel(year: number) {
+  return `${year}–${String(year + 1).slice(2)}`
+}
+
 export default function RankingsPage() {
+  const baseYear = currentSeasonYear()
+  const seasons = [baseYear, baseYear - 1, baseYear - 2]
+
+  const [selectedSeason, setSelectedSeason] = useState(baseYear)
   const [series, setSeries] = useState<Series[]>([])
   const [rankingsBySeries, setRankingsBySeries] = useState<Team[][]>([])
   const [ourStats, setOurStats] = useState<OurStats | null>(null)
@@ -20,24 +32,24 @@ export default function RankingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/rbfa-rankings')
+    setLoading(true)
+    setError(null)
+    fetch(`/api/rbfa-rankings?season=${selectedSeason}`)
       .then(r => r.json())
       .then(d => {
         if (d.error) throw new Error(d.error)
         setSeries(d.series ?? [])
-        // Extract teams from each series ranking
         const byS: Team[][] = (d.rankings ?? []).map((r: { rankings: { teams: Team[] }[] }) =>
           r.rankings?.[0]?.teams ?? []
         )
         setRankingsBySeries(byS)
         setOurStats(d.ourStats ?? null)
-        // Default to "reeks" series
         const reeksIdx = (d.series ?? []).findIndex((s: Series) => s.name.toLowerCase().includes('reeks'))
         setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [selectedSeason])
 
   const currentTeams = rankingsBySeries[activeIdx] ?? []
   const formColors: Record<string, string> = {
@@ -53,10 +65,30 @@ export default function RankingsPage() {
         <h1 className="text-xl font-black">Rangschikking</h1>
       </div>
 
+      {/* Season selector */}
+      <div className="px-4 mb-4">
+        <p className="text-[10px] text-[var(--subtle)] uppercase tracking-widest mb-2">Seizoen</p>
+        <div className="flex gap-2">
+          {seasons.map(year => (
+            <button
+              key={year}
+              onClick={() => setSelectedSeason(year)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                selectedSeason === year
+                  ? 'bg-[var(--sand)] text-[var(--sand-fg)]'
+                  : 'bg-[var(--surface)] text-[var(--subtle)] border border-[var(--border)]'
+              }`}
+            >
+              {seasonLabel(year)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Our stats summary */}
       {ourStats && (
         <div className="mx-4 mb-4 bg-[var(--surface)] rounded-2xl p-4 border border-[var(--sand)]/30">
-          <p className="text-xs text-[var(--subtle)] mb-2">MVC Den Derde Helft — seizoensoverzicht</p>
+          <p className="text-xs text-[var(--subtle)] mb-2">MVC Den Derde Helft — {seasonLabel(selectedSeason)}</p>
           <div className="flex gap-3 mb-3">
             {[
               { label: 'Gespeeld', v: ourStats.played },
@@ -70,18 +102,20 @@ export default function RankingsPage() {
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[var(--subtle)] mr-1">Vorm:</span>
-            {ourStats.form.map((r, i) => (
-              <span key={i} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${formColors[r] ?? ''}`}>{r}</span>
-            ))}
-          </div>
+          {ourStats.form.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-[var(--subtle)] mr-1">Vorm:</span>
+              {ourStats.form.map((r, i) => (
+                <span key={i} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${formColors[r] ?? ''}`}>{r}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Series tabs */}
       {series.length > 1 && (
-        <div className="flex px-4 gap-1 mb-4 overflow-x-auto">
+        <div className="flex px-4 gap-1 mb-4 overflow-x-auto scrollbar-none">
           {series.map((s, i) => (
             <button key={s.serieId} onClick={() => setActiveIdx(i)}
               className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${activeIdx === i ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}>
@@ -96,12 +130,11 @@ export default function RankingsPage() {
         {loading ? (
           Array.from({length:6}).map((_,i) => <div key={i} className="bg-[var(--surface)] rounded-xl h-12 mb-2 animate-pulse" />)
         ) : error ? (
-          <p className="text-center text-red-400 py-8">{error}</p>
+          <p className="text-center text-red-400 py-8 text-sm">{error}</p>
         ) : currentTeams.length === 0 ? (
-          <p className="text-center text-[var(--subtle)] py-8">Geen standen gevonden</p>
+          <p className="text-center text-[var(--subtle)] py-8 text-sm">Geen standen gevonden voor {seasonLabel(selectedSeason)}</p>
         ) : (
           <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] overflow-hidden">
-            {/* Header */}
             <div className="flex items-center px-4 py-2 border-b border-[var(--border)] text-[10px] text-[var(--subtle)] uppercase tracking-wide">
               <span className="w-6">#</span>
               <span className="flex-1">Team</span>

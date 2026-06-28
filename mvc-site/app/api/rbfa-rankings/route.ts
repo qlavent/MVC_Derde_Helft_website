@@ -15,11 +15,16 @@ async function rbfaQuery(query: string) {
   return json.data
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const season = searchParams.get('season') // e.g. "2024" for 2024-2025
+
   try {
+    const seasonArg = season ? `, seasonYear: ${season}` : ''
+
     const seriesData = await rbfaQuery(`
       query {
-        teamSeriesAndRankings(teamId: "${TEAM_ID}", language: nl) {
+        teamSeriesAndRankings(teamId: "${TEAM_ID}", language: nl${seasonArg}) {
           series { name serieId }
           rankings { rankings { teams { name logo position points } } }
         }
@@ -30,7 +35,7 @@ export async function GET() {
 
     const calData = await rbfaQuery(`
       query {
-        teamCalendar(teamId: "${TEAM_ID}", language: nl, sortByDate: asc) {
+        teamCalendar(teamId: "${TEAM_ID}", language: nl, sortByDate: asc${seasonArg}) {
           id state homeTeam { id } awayTeam { id }
           outcome { homeTeamGoals awayTeamGoals }
         }
