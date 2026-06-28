@@ -10,20 +10,15 @@ interface OurStats { played: number; wins: number; draws: number; losses: number
 
 const OUR_TEAM = 'DERDE HELFT'
 
-function currentSeasonYear(): number {
+function currentSeasonLabel() {
   const now = new Date()
-  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
-}
-
-function seasonLabel(year: number) {
-  return `${year}–${String(year + 1).slice(2)}`
+  const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  return `${y}–${String(y + 1).slice(2)}`
 }
 
 export default function RankingsPage() {
-  const baseYear = currentSeasonYear()
-  const seasons = [baseYear, baseYear - 1, baseYear - 2]
+  const seasonLabel = currentSeasonLabel()
 
-  const [selectedSeason, setSelectedSeason] = useState(baseYear)
   const [series, setSeries] = useState<Series[]>([])
   const [rankingsBySeries, setRankingsBySeries] = useState<Team[][]>([])
   const [ourStats, setOurStats] = useState<OurStats | null>(null)
@@ -32,9 +27,7 @@ export default function RankingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    fetch(`/api/rbfa-rankings?season=${selectedSeason}`)
+    fetch('/api/rbfa-rankings')
       .then(r => r.json())
       .then(d => {
         if (d.error) throw new Error(d.error)
@@ -49,7 +42,7 @@ export default function RankingsPage() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [selectedSeason])
+  }, [])
 
   const currentTeams = rankingsBySeries[activeIdx] ?? []
   const formColors: Record<string, string> = {
@@ -65,30 +58,18 @@ export default function RankingsPage() {
         <h1 className="text-xl font-black">Rangschikking</h1>
       </div>
 
-      {/* Season selector */}
-      <div className="px-4 mb-4">
-        <p className="text-[10px] text-[var(--subtle)] uppercase tracking-widest mb-2">Seizoen</p>
-        <div className="flex gap-2">
-          {seasons.map(year => (
-            <button
-              key={year}
-              onClick={() => setSelectedSeason(year)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                selectedSeason === year
-                  ? 'bg-[var(--sand)] text-[var(--sand-fg)]'
-                  : 'bg-[var(--surface)] text-[var(--subtle)] border border-[var(--border)]'
-              }`}
-            >
-              {seasonLabel(year)}
-            </button>
-          ))}
-        </div>
+      {/* Season badge */}
+      <div className="px-4 mb-4 flex items-center gap-2">
+        <span className="text-[10px] text-[var(--subtle)] uppercase tracking-widest">Seizoen</span>
+        <span className="bg-[var(--sand)] text-[var(--sand-fg)] text-xs font-bold px-3 py-1 rounded-full">
+          {seasonLabel}
+        </span>
       </div>
 
       {/* Our stats summary */}
       {ourStats && (
         <div className="mx-4 mb-4 bg-[var(--surface)] rounded-2xl p-4 border border-[var(--sand)]/30">
-          <p className="text-xs text-[var(--subtle)] mb-2">MVC Den Derde Helft — {seasonLabel(selectedSeason)}</p>
+          <p className="text-xs text-[var(--subtle)] mb-2">MVC Den Derde Helft — {seasonLabel}</p>
           <div className="flex gap-3 mb-3">
             {[
               { label: 'Gespeeld', v: ourStats.played },
@@ -132,7 +113,7 @@ export default function RankingsPage() {
         ) : error ? (
           <p className="text-center text-red-400 py-8 text-sm">{error}</p>
         ) : currentTeams.length === 0 ? (
-          <p className="text-center text-[var(--subtle)] py-8 text-sm">Geen standen gevonden voor {seasonLabel(selectedSeason)}</p>
+          <p className="text-center text-[var(--subtle)] py-8 text-sm">Geen standen gevonden</p>
         ) : (
           <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] overflow-hidden">
             <div className="flex items-center px-4 py-2 border-b border-[var(--border)] text-[10px] text-[var(--subtle)] uppercase tracking-wide">
