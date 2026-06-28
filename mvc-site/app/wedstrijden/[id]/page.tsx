@@ -80,9 +80,15 @@ export default function MatchDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'motm' }, () => fetchAll())
-      .subscribe()
+      .subscribe((status) => { console.log('[realtime]', status) })
 
-    return () => { supabase.removeChannel(channel) }
+    // Fallback poll every 15s in case realtime drops
+    const interval = setInterval(fetchAll, 15000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+    }
   }, [fetchAll])
 
   if (loading || !match) {
