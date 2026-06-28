@@ -103,15 +103,15 @@ export default function RankingsPage() {
         .finally(() => setRbfaLoading(false))
     } else {
       // Read snapshot from Supabase
-      supabase
-        .from('rankings_snapshots')
-        .select('*')
-        .eq('season', selectedSeason)
-        .order('position')
-        .then(({ data, error }) => {
+      ;(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('rankings_snapshots')
+            .select('*')
+            .eq('season', selectedSeason)
+            .order('position')
           if (error) throw new Error(error.message)
           const rows = data ?? []
-          // Group by serie
           const serieMap = new Map<string, { name: string; serieId: string; teams: Team[] }>()
           for (const r of rows) {
             if (!serieMap.has(r.serie_id)) {
@@ -126,9 +126,12 @@ export default function RankingsPage() {
           setRankingsBySeries(serieList.map(s => s.teams))
           const reeksIdx = serieList.findIndex(s => s.name.toLowerCase().includes('reeks'))
           setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
-        })
-        .catch((e: Error) => setRbfaError(e.message))
-        .finally(() => setRbfaLoading(false))
+        } catch (e) {
+          setRbfaError(e instanceof Error ? e.message : String(e))
+        } finally {
+          setRbfaLoading(false)
+        }
+      })()
     }
   }, [selectedSeason, isCurrentSeason])
 
