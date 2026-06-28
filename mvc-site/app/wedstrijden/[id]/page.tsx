@@ -9,7 +9,12 @@ import { nl } from 'date-fns/locale'
 import { ChevronLeft, Plus, Shuffle, X } from 'lucide-react'
 import Link from 'next/link'
 
-type Tab = 'info' | 'doelpunten' | 'corners' | 'kaarten'
+type Tab = 'live' | 'info'
+
+type TimelineEvent =
+  | { kind: 'goal'; data: Goal; created_at: string }
+  | { kind: 'corner'; data: Corner; created_at: string }
+  | { kind: 'card'; data: Card; created_at: string }
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,7 +26,7 @@ export default function MatchDetailPage() {
   const [cards, setCards] = useState<Card[]>([])
   const [motm, setMotm] = useState<Motm | null>(null)
   const [kitCarrier, setKitCarrier] = useState<KitCarrier | null>(null)
-  const [tab, setTab] = useState<Tab>('info')
+  const [tab, setTab] = useState<Tab>('live')
   const [loading, setLoading] = useState(true)
 
   // Modals
@@ -45,9 +50,9 @@ export default function MatchDetailPage() {
       supabase.from('matches').select('*').eq('id', id).single(),
       supabase.from('players').select('*').order('last_name'),
       supabase.from('match_players').select('player_id').eq('match_id', id),
-      supabase.from('goals').select('*, player:players(*)').eq('match_id', id).order('minute'),
-      supabase.from('corners').select('*, taker:players!corners_taker_id_fkey(*), header:players!corners_header_id_fkey(*)').eq('match_id', id).order('minute'),
-      supabase.from('cards').select('*, player:players(*)').eq('match_id', id).order('minute'),
+      supabase.from('goals').select('*, player:players(*)').eq('match_id', id).order('created_at'),
+      supabase.from('corners').select('*, taker:players!corners_taker_id_fkey(*), header:players!corners_header_id_fkey(*)').eq('match_id', id).order('created_at'),
+      supabase.from('cards').select('*, player:players(*)').eq('match_id', id).order('created_at'),
       supabase.from('motm').select('*, player:players(*)').eq('match_id', id).single(),
       supabase.from('kit_carriers').select('*, player:players(*)').eq('match_id', id).single(),
     ])
@@ -78,36 +83,56 @@ export default function MatchDetailPage() {
     )
   }
 
-  const homeScore = match.manual_home_score ?? match.rbfa_home_score
-  const awayScore = match.manual_away_score ?? match.rbfa_away_score
+  // Our score computed from events — no manual +/- for our side
+  const ourGoals = goals.filter((g) => !g.is_corner_goal).length
+  const ourCornerGoals = corners.filter((c) => c.is_goal).length
+  const ourScore = ourGoals + ourCornerGoals
+  const opponentScore = match.is_home_game
+    ? (match.manual_away_score ?? 0)
+    : (match.manual_home_score ?? 0)
 
-  async function updateScore(field: 'manual_home_score' | 'manual_away_score', delta: number) {
-    const current = field === 'manual_home_score' ? (match!.manual_home_score ?? 0) : (match!.manual_away_score ?? 0)
-    const newVal = Math.max(0, current + delta)
-    await supabase.from('matches').update({ [field]: newVal }).eq('id', id)
+  const displayHomeScore = match.is_home_game ? ourScore : opponentScore
+  const displayAwayScore = match.is_home_game ? opponentScore : ourScore
+
+  async function updateOpponentScore(delta: number) {
+    const field = match!.is_home_game ? 'manual_away_score' : 'manual_home_score'
+    const current = match!.is_home_game
+      ? (match!.manual_away_score ?? 0)
+      : (match!.manual_home_score ?? 0)
+    await supabase.from('matches').update({ [field]: Math.max(0, current + delta) }).eq('id', id)
     fetchAll()
   }
 
-  async function addGoal(playerId: string, isCornerGoal: boolean, minute: number | null) {
-    await supabase.from('goals').insert({ match_id: id, player_id: playerId, minute, is_corner_goal: isCornerGoal })
+  async function addGoal(playerId: string) {
+    await supabase.from('goals').insert({ match_id: id, player_id: playerId, is_corner_goal: false })
     setShowGoalModal(false)
     fetchAll()
   }
 
-  async function addCorner(takerId: string, headerId: string, minute: number | null, isGoal: boolean) {
-    await supabase.from('corners').insert({ match_id: id, taker_id: takerId, header_id: headerId, minute, is_goal: isGoal })
-    if (isGoal && match) {
-      const field = match.is_home_game ? 'manual_home_score' : 'manual_away_score'
-      const current = match.is_home_game ? (match.manual_home_score ?? 0) : (match.manual_away_score ?? 0)
-      await supabase.from('matches').update({ [field]: current + 1 }).eq('id', id)
-    }
+  async function addCorner(takerId: string, headerId: string, isGoal: boolean) {
+    await supabase.from('corners').insert({ match_id: id, taker_id: takerId, header_id: headerId, minute: null, is_goal: isGoal })
     setShowCornerModal(false)
     fetchAll()
   }
 
-  async function addCard(playerId: string, cardType: 'yellow' | 'red', minute: number | null) {
-    await supabase.from('cards').insert({ match_id: id, player_id: playerId, minute, card_type: cardType, source: 'manual' })
+  async function addCard(playerId: string, cardType: 'yellow' | 'red') {
+    await supabase.from('cards').insert({ match_id: id, player_id: playerId, minute: null, card_type: cardType, source: 'manual' })
     setShowCardModal(false)
+    fetchAll()
+  }
+
+  async function deleteGoal(goalId: string) {
+    await supabase.from('goals').delete().eq('id', goalId)
+    fetchAll()
+  }
+
+  async function deleteCorner(cornerId: string) {
+    await supabase.from('corners').delete().eq('id', cornerId)
+    fetchAll()
+  }
+
+  async function deleteCard(cardId: string) {
+    await supabase.from('cards').delete().eq('id', cardId)
     fetchAll()
   }
 
@@ -137,14 +162,19 @@ export default function MatchDetailPage() {
     fetchAll()
   }
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'info', label: 'Info' },
-    { key: 'doelpunten', label: 'Goals' },
-    { key: 'corners', label: 'Corners' },
-    { key: 'kaarten', label: 'Kaarten' },
-  ]
+  const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
 
-  const playerName = (p?: Player | null) => p ? `${p.first_name} ${p.last_name}` : '—'
+  // Build unified timeline sorted newest first
+  const timeline: TimelineEvent[] = [
+    ...goals.map((g) => ({ kind: 'goal' as const, data: g, created_at: g.created_at })),
+    ...corners.map((c) => ({ kind: 'corner' as const, data: c, created_at: c.created_at })),
+    ...cards.map((c) => ({ kind: 'card' as const, data: c, created_at: c.created_at })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  const matchDate = (() => {
+    const r = new Date(match.start_time)
+    return new Date(r.getTime() + r.getTimezoneOffset() * 60000)
+  })()
 
   return (
     <div className="min-h-screen">
@@ -157,7 +187,9 @@ export default function MatchDetailPage() {
 
       {/* Match header */}
       <div className="px-4 pb-4">
-        <p className="text-xs text-[var(--subtle)] mb-2 text-center">{match.series_name} • {format((() => { const r = new Date(match.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'EEEE d MMM yyyy • HH:mm', { locale: nl })}</p>
+        <p className="text-xs text-[var(--subtle)] mb-2 text-center">
+          {match.series_name} • {format(matchDate, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
+        </p>
 
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
@@ -167,24 +199,40 @@ export default function MatchDetailPage() {
           {/* Score */}
           <div className="flex flex-col items-center">
             {match.state !== 'upcoming' ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* Home score */}
                 <div className="flex flex-col items-center gap-1">
-                  <button onClick={() => updateScore('manual_home_score', 1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
-                  <span className="text-3xl font-black tabular-nums">{homeScore ?? 0}</span>
-                  <button onClick={() => updateScore('manual_home_score', -1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
+                  {!match.is_home_game && (
+                    <>
+                      <button onClick={() => updateOpponentScore(1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
+                    </>
+                  )}
+                  <span className="text-3xl font-black tabular-nums">{displayHomeScore}</span>
+                  {!match.is_home_game && (
+                    <button onClick={() => updateOpponentScore(-1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
+                  )}
                 </div>
+
                 <span className="text-[var(--subtle2)] text-xl">—</span>
+
+                {/* Away score */}
                 <div className="flex flex-col items-center gap-1">
-                  <button onClick={() => updateScore('manual_away_score', 1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
-                  <span className="text-3xl font-black tabular-nums">{awayScore ?? 0}</span>
-                  <button onClick={() => updateScore('manual_away_score', -1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
+                  {match.is_home_game && (
+                    <button onClick={() => updateOpponentScore(1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
+                  )}
+                  <span className="text-3xl font-black tabular-nums">{displayAwayScore}</span>
+                  {match.is_home_game && (
+                    <button onClick={() => updateOpponentScore(-1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
+                  )}
                 </div>
               </div>
             ) : (
-              <span className="text-lg text-[var(--subtle)]">{format((() => { const r = new Date(match.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'HH:mm')}</span>
+              <span className="text-lg text-[var(--subtle)]">{format(matchDate, 'HH:mm')}</span>
             )}
             {match.rbfa_home_score !== null && (
-              <p className="text-[10px] text-[var(--subtle2)] mt-1">Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}</p>
+              <p className="text-[10px] text-[var(--subtle2)] mt-1">
+                Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}
+              </p>
             )}
           </div>
 
@@ -195,24 +243,116 @@ export default function MatchDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex px-4 gap-1 mb-4 overflow-x-auto">
-        {tabs.map(({ key, label }) => (
+      <div className="flex px-4 gap-1 mb-4">
+        {(['live', 'info'] as Tab[]).map((t) => (
           <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-              tab === key ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${
+              tab === t ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'
             }`}
           >
-            {label}
+            {t === 'live' ? 'Live' : 'Info'}
           </button>
         ))}
       </div>
 
-      <div className="px-4 space-y-4 pb-12">
+      <div className="px-4 pb-28">
+        {/* LIVE TAB */}
+        {tab === 'live' && (
+          <div className="space-y-4">
+            {/* Action buttons */}
+            {match.state !== 'upcoming' && (
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setShowGoalModal(true)}
+                  className="bg-[var(--sand)] text-black rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                >
+                  <span className="text-2xl">⚽</span>
+                  Doelpunt
+                </button>
+                <button
+                  onClick={() => setShowCornerModal(true)}
+                  className="bg-[var(--olive)] text-[var(--fg)] rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                >
+                  <span className="text-2xl">🎯</span>
+                  Corner
+                </button>
+                <button
+                  onClick={() => setShowCardModal(true)}
+                  className="bg-[var(--surface)] border border-yellow-500/50 text-[var(--fg)] rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                >
+                  <span className="text-2xl">🟨</span>
+                  Kaart
+                </button>
+              </div>
+            )}
+
+            {/* Timeline */}
+            {timeline.length === 0 ? (
+              <p className="text-center text-[var(--subtle2)] py-8">Nog geen events</p>
+            ) : (
+              <div className="space-y-2">
+                {timeline.map((ev, idx) => {
+                  if (ev.kind === 'goal') {
+                    const g = ev.data as Goal
+                    return (
+                      <div key={`g-${g.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                        <span className="text-lg flex-shrink-0">⚽</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">{playerName(g.player)}</p>
+                          <p className="text-[10px] text-[var(--subtle2)]">#{timeline.length - idx}</p>
+                        </div>
+                        <button onClick={() => deleteGoal(g.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )
+                  }
+                  if (ev.kind === 'corner') {
+                    const c = ev.data as Corner
+                    return (
+                      <div key={`c-${c.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                        <span className="text-lg flex-shrink-0">{c.is_goal ? '⚽' : '🎯'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">
+                            {playerName(c.taker)} → {playerName(c.header)}
+                          </p>
+                          <p className="text-[10px] text-[var(--olive)]">
+                            {c.is_goal ? 'Corner goal' : 'Corner'}
+                          </p>
+                        </div>
+                        <button onClick={() => deleteCorner(c.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )
+                  }
+                  if (ev.kind === 'card') {
+                    const c = ev.data as Card
+                    return (
+                      <div key={`k-${c.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                        <span className={`w-5 h-7 rounded-sm flex-shrink-0 ${c.card_type === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">{c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'}</p>
+                          {c.source === 'rbfa' && <p className="text-[10px] text-[var(--subtle2)]">RBFA</p>}
+                        </div>
+                        <button onClick={() => deleteCard(c.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )
+                  }
+                  return null
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* INFO TAB */}
         {tab === 'info' && (
-          <>
+          <div className="space-y-4">
             {/* Selection */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
@@ -256,11 +396,11 @@ export default function MatchDetailPage() {
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <h3 className="text-sm font-semibold mb-3">⭐ Man of the Match</h3>
               {motm ? (
-                <p className="text-sm text-[var(--sand)] font-semibold">{playerName(motm.player)}</p>
+                <p className="text-sm text-[var(--sand)] font-semibold mb-2">{playerName(motm.player)}</p>
               ) : (
                 <p className="text-xs text-[var(--subtle2)] mb-2">Nog niet gekozen</p>
               )}
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2">
                 {selectedPlayers.map((p) => (
                   <button
                     key={p.id}
@@ -291,107 +431,6 @@ export default function MatchDetailPage() {
                 </a>
               )}
             </div>
-          </>
-        )}
-
-        {/* GOALS TAB */}
-        {tab === 'doelpunten' && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowGoalModal(true)}
-              className="w-full bg-[var(--sand)] text-black rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
-            >
-              <Plus size={20} /> Doelpunt toevoegen
-            </button>
-            {goals.length === 0 ? (
-              <p className="text-center text-[var(--subtle2)] py-8">Nog geen doelpunten</p>
-            ) : (
-              goals.map((g) => (
-                <div key={g.id} className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{playerName(g.player)}</p>
-                    {g.is_corner_goal && <span className="text-xs text-[var(--olive)]">Corner goal</span>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {g.minute && <span className="text-xs text-[var(--subtle)]">{g.minute}&apos;</span>}
-                    <button onClick={async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* CORNERS TAB */}
-        {tab === 'corners' && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowCornerModal(true)}
-              className="w-full bg-[var(--olive)] text-[var(--fg)] rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
-            >
-              <Plus size={20} /> Corner toevoegen
-            </button>
-            {corners.length === 0 ? (
-              <p className="text-center text-[var(--subtle2)] py-8">Nog geen corners</p>
-            ) : (
-              corners.map((c) => (
-                <div key={c.id} className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-[var(--subtle)]">Nemer</p>
-                      <p className="text-sm font-semibold">{playerName(c.taker)}</p>
-                    </div>
-                    <div className="text-[var(--subtle2)]">→</div>
-                    <div className="text-right">
-                      <p className="text-xs text-[var(--subtle)]">Kopballer</p>
-                      <p className="text-sm font-semibold">{playerName(c.header)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
-                      {c.is_goal && <span className="text-xs bg-[var(--olive)]/30 text-[var(--olive)] px-2 py-0.5 rounded-full">⚽ Gescoord</span>}
-                      {c.minute && <span className="text-xs text-[var(--subtle)]">{c.minute}&apos;</span>}
-                    </div>
-                    <button onClick={async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* CARDS TAB */}
-        {tab === 'kaarten' && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowCardModal(true)}
-              className="w-full bg-[var(--surface)] border border-yellow-500/50 text-[var(--fg)] rounded-2xl py-4 font-bold flex items-center justify-center gap-2"
-            >
-              <Plus size={20} /> Kaart toevoegen
-            </button>
-            {cards.length === 0 ? (
-              <p className="text-center text-[var(--subtle2)] py-8">Nog geen kaarten</p>
-            ) : (
-              cards.map((c) => (
-                <div key={c.id} className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'}</p>
-                    {c.source === 'rbfa' && <span className="text-xs text-[var(--subtle2)]">RBFA</span>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {c.minute && <span className="text-xs text-[var(--subtle)]">{c.minute}&apos;</span>}
-                    <span className={`w-5 h-7 rounded-sm ${c.card_type === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
-                    <button onClick={async () => { await supabase.from('cards').delete().eq('id', c.id); fetchAll() }} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
         )}
       </div>
@@ -447,8 +486,9 @@ export default function MatchDetailPage() {
 
 function ModalWrapper({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center px-0" onClick={onClose}>
+      <div className="bg-[var(--surface)] rounded-t-3xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-5" />
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-bold">{title}</h3>
           <button onClick={onClose}><X size={20} className="text-[var(--subtle)]" /></button>
@@ -459,49 +499,35 @@ function ModalWrapper({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-function GoalModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string, isCorner: boolean, min: number | null) => void; onClose: () => void }) {
-  const [playerId, setPlayerId] = useState('')
-  const [minute, setMinute] = useState('')
-  const [isCorner, setIsCorner] = useState(false)
-
+function GoalModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string) => void; onClose: () => void }) {
   return (
-    <ModalWrapper title="Doelpunt toevoegen" onClose={onClose}>
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Speler</label>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
-            <option value="">Kies speler</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut (optioneel)</label>
-          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 34" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
-        </div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" checked={isCorner} onChange={(e) => setIsCorner(e.target.checked)} className="w-5 h-5 rounded" />
-          <span className="text-sm">Corner goal</span>
-        </label>
-        <button
-          disabled={!playerId}
-          onClick={() => onAdd(playerId, isCorner, minute ? parseInt(minute) : null)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold disabled:opacity-40"
-        >
-          Toevoegen
-        </button>
+    <ModalWrapper title="⚽ Doelpunt" onClose={onClose}>
+      <p className="text-xs text-[var(--subtle)] mb-3">Wie scoorde?</p>
+      <div className="space-y-2 max-h-80 overflow-y-auto">
+        {players.length === 0 && (
+          <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+        )}
+        {players.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onAdd(p.id)}
+            className="w-full text-left px-4 py-4 bg-[var(--muted)] rounded-xl text-sm font-semibold hover:bg-[var(--border)] transition-colors active:scale-98"
+          >
+            {p.first_name} {p.last_name}
+          </button>
+        ))}
       </div>
     </ModalWrapper>
   )
 }
 
-function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (tid: string, hid: string, min: number | null, isGoal: boolean) => void; onClose: () => void }) {
+function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (tid: string, hid: string, isGoal: boolean) => void; onClose: () => void }) {
   const [takerId, setTakerId] = useState('')
   const [headerId, setHeaderId] = useState('')
-  const [minute, setMinute] = useState('')
   const [isGoal, setIsGoal] = useState(false)
 
   return (
-    <ModalWrapper title="Corner toevoegen" onClose={onClose}>
+    <ModalWrapper title="🎯 Corner" onClose={onClose}>
       <div className="space-y-4">
         <div>
           <label className="text-xs text-[var(--subtle)] mb-1 block">Nemer</label>
@@ -517,68 +543,67 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
             {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
         </div>
+        {/* Goal toggle — big buttons */}
         <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut</label>
-            <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 12" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
-          </div>
-          <div className="flex items-end pb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={isGoal} onChange={(e) => setIsGoal(e.target.checked)} className="w-5 h-5 rounded" />
-              <span className="text-sm">Goal</span>
-            </label>
-          </div>
+          <button
+            onClick={() => setIsGoal(false)}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${!isGoal ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+          >
+            🎯 Geen goal
+          </button>
+          <button
+            onClick={() => setIsGoal(true)}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[var(--sand)] text-black' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+          >
+            ⚽ Goal!
+          </button>
         </div>
         <button
           disabled={!takerId || !headerId}
-          onClick={() => onAdd(takerId, headerId, minute ? parseInt(minute) : null, isGoal)}
-          className="w-full bg-[var(--olive)] text-white rounded-xl py-3 font-bold disabled:opacity-40"
+          onClick={() => onAdd(takerId, headerId, isGoal)}
+          className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40 active:scale-98"
         >
-          Toevoegen
+          Opslaan
         </button>
       </div>
     </ModalWrapper>
   )
 }
 
-function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string, type: 'yellow' | 'red', min: number | null) => void; onClose: () => void }) {
-  const [playerId, setPlayerId] = useState('')
+function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string, type: 'yellow' | 'red') => void; onClose: () => void }) {
   const [cardType, setCardType] = useState<'yellow' | 'red'>('yellow')
-  const [minute, setMinute] = useState('')
 
   return (
-    <ModalWrapper title="Kaart toevoegen" onClose={onClose}>
+    <ModalWrapper title="Kaart" onClose={onClose}>
       <div className="space-y-4">
-        <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Speler</label>
-          <select value={playerId} onChange={(e) => setPlayerId(e.target.value)} className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none">
-            <option value="">Kies speler</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-          </select>
-        </div>
+        {/* Card type toggle */}
         <div className="flex gap-3">
           {(['yellow', 'red'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setCardType(t)}
-              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cardType === t ? 'bg-[var(--muted)] ring-2 ring-[var(--sand)]' : 'bg-[var(--muted)]'}`}
+              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${cardType === t ? 'ring-2 ring-[var(--sand)]' : ''} bg-[var(--muted)]`}
             >
               <span className={`w-5 h-7 rounded-sm ${t === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
-              <span className="text-sm">{t === 'yellow' ? 'Geel' : 'Rood'}</span>
+              <span className="text-sm font-semibold">{t === 'yellow' ? 'Geel' : 'Rood'}</span>
             </button>
           ))}
         </div>
-        <div>
-          <label className="text-xs text-[var(--subtle)] mb-1 block">Minuut</label>
-          <input type="number" value={minute} onChange={(e) => setMinute(e.target.value)} placeholder="bv. 55" className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] focus:outline-none" />
+        <p className="text-xs text-[var(--subtle)]">Wie krijgt de kaart?</p>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {players.length === 0 && (
+            <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+          )}
+          {players.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onAdd(p.id, cardType)}
+              className="w-full text-left px-4 py-3 bg-[var(--muted)] rounded-xl text-sm font-semibold hover:bg-[var(--border)] transition-colors"
+            >
+              {p.first_name} {p.last_name}
+            </button>
+          ))}
         </div>
-        <button
-          disabled={!playerId}
-          onClick={() => onAdd(playerId, cardType, minute ? parseInt(minute) : null)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold disabled:opacity-40"
-        >
-          Toevoegen
-        </button>
       </div>
     </ModalWrapper>
   )

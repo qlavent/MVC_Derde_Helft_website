@@ -57,6 +57,7 @@ export interface Card {
   minute: number | null
   card_type: 'yellow' | 'red'
   source: string
+  created_at: string
   player?: Player
 }
 
