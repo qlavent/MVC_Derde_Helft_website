@@ -395,7 +395,13 @@ export default function SpelersPage() {
                 </div>
                 {hasStats ? (
                   <div className="flex flex-wrap gap-2">
-                    <StatBadge value={s.goals} label="goals" color="text-[#22C55E]" />
+                    {(() => {
+                      const total = s.goals + s.kicker_goals + s.header_goals
+                      const cornerGoals = s.kicker_goals + s.header_goals
+                      if (total === 0) return null
+                      const sublabel = cornerGoals > 0 ? `${s.goals} reg · ${cornerGoals} corner` : 'goals'
+                      return <StatBadge value={total} label={sublabel} color="text-[#22C55E]" />
+                    })()}
                     {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label={`corner nemer · ${s.kicker_goals}/${s.corners_taken}`} color="text-[var(--fg)]" />}
                     {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label={`corner kopper · ${s.header_goals}/${s.corners_headed}`} color="text-[var(--fg)]" />}
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
@@ -450,8 +456,11 @@ export default function SpelersPage() {
                 <p className="text-xs text-[var(--subtle)] mt-1">Wedstrijden gespeeld</p>
               </div>
               <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.goals}</p>
+                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.goals + selectedPlayer.kicker_goals + selectedPlayer.header_goals}</p>
                 <p className="text-xs text-[var(--subtle)] mt-1">Doelpunten</p>
+                {(selectedPlayer.kicker_goals + selectedPlayer.header_goals) > 0 && (
+                  <p className="text-[10px] text-[var(--subtle2)] mt-0.5">{selectedPlayer.goals} reg · {selectedPlayer.kicker_goals + selectedPlayer.header_goals} corner</p>
+                )}
               </div>
             </div>
 
