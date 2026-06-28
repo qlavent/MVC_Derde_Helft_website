@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier } from '@/lib/types'
+import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { ChevronLeft, Plus, Shuffle, X } from 'lucide-react'
+import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 type Tab = 'live' | 'info'
@@ -21,6 +21,9 @@ export default function MatchDetailPage() {
   const [cards, setCards] = useState<Card[]>([])
   const [motm, setMotm] = useState<Motm | null>(null)
   const [kitCarrier, setKitCarrier] = useState<KitCarrier | null>(null)
+  const [photos, setPhotos] = useState<MatchPhoto[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('live')
   const [loading, setLoading] = useState(true)
 
@@ -40,16 +43,17 @@ export default function MatchDetailPage() {
       { data: cardData },
       { data: motmData },
       { data: kitData },
+      { data: photoData },
     ] = await Promise.all([
       supabase.from('matches').select('*').eq('id', id).single(),
       supabase.from('players').select('*').order('last_name'),
       supabase.from('match_players').select('player_id').eq('match_id', id),
       supabase.from('goals').select('*, player:players(*)').eq('match_id', id).order('created_at'),
       supabase.from('corners').select('*, taker:players!corners_taker_id_fkey(*), header:players!corners_header_id_fkey(*)').eq('match_id', id).order('created_at'),
-      // cards: order by id (created_at may not exist in older DB schemas)
       supabase.from('cards').select('*, player:players(*)').eq('match_id', id).order('id'),
       supabase.from('motm').select('*, player:players(*)').eq('match_id', id).single(),
       supabase.from('kit_carriers').select('*, player:players(*)').eq('match_id', id).single(),
+      supabase.from('match_photos').select('*').eq('match_id', id).order('created_at'),
     ])
 
     setMatch(matchData)
@@ -61,6 +65,7 @@ export default function MatchDetailPage() {
     setCards((cardData ?? []) as Card[])
     setMotm(motmData as Motm | null)
     setKitCarrier(kitData as KitCarrier | null)
+    setPhotos((photoData ?? []) as MatchPhoto[])
     setLoading(false)
   }, [id])
 
@@ -109,6 +114,31 @@ export default function MatchDetailPage() {
   async function addCard(playerId: string, cardType: 'yellow' | 'red') {
     await supabase.from('cards').insert({ match_id: id, player_id: playerId, minute: null, card_type: cardType, source: 'manual' })
     setShowCardModal(false)
+    fetchAll()
+  }
+
+  async function uploadPhoto(file: File) {
+    setUploading(true)
+    try {
+      const compressed = await compressImage(file)
+      const path = `${id}/${Date.now()}.jpg`
+      const { error: upErr } = await supabase.storage.from('match-photos').upload(path, compressed, { contentType: 'image/jpeg' })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('match-photos').getPublicUrl(path)
+      await supabase.from('match_photos').insert({ match_id: id, url: publicUrl })
+      fetchAll()
+    } catch (e) {
+      console.error('Upload failed', e)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function deletePhoto(photo: MatchPhoto) {
+    // Extract storage path from URL (everything after /match-photos/)
+    const pathMatch = photo.url.match(/match-photos\/(.+)$/)
+    if (pathMatch) await supabase.storage.from('match-photos').remove([pathMatch[1]])
+    await supabase.from('match_photos').delete().eq('id', photo.id)
     fetchAll()
   }
 
@@ -431,6 +461,52 @@ export default function MatchDetailPage() {
                 </a>
               )}
             </div>
+
+            {/* Photo gallery */}
+            <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">📸 Foto's</h3>
+                <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-colors ${
+                  uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-black'
+                }`}>
+                  <Camera size={13} />
+                  {uploading ? 'Uploaden…' : 'Voeg toe'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadPhoto(file)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+              {photos.length === 0 ? (
+                <p className="text-xs text-[var(--subtle2)]">Nog geen foto's</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {photos.map((p) => (
+                    <div key={p.id} className="relative aspect-square group">
+                      <img
+                        src={p.url}
+                        alt=""
+                        className="w-full h-full object-cover rounded-xl cursor-pointer"
+                        onClick={() => setLightboxUrl(p.url)}
+                      />
+                      <button
+                        onClick={() => deletePhoto(p)}
+                        className="absolute top-1 right-1 bg-black/60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={11} className="text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -478,8 +554,39 @@ export default function MatchDetailPage() {
           onClose={() => setShowPlayerModal(false)}
         />
       )}
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
+          <button onClick={() => setLightboxUrl(null)} className="absolute top-6 right-6 text-white/70 hover:text-white">
+            <X size={28} />
+          </button>
+        </div>
+      )}
     </div>
   )
+}
+
+// --- Helpers ---
+
+async function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxWidth / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('No canvas context'))
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')), 'image/jpeg', quality)
+    }
+    img.onerror = reject
+    img.src = url
+  })
 }
 
 // --- Modals ---

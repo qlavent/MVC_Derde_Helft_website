@@ -105,6 +105,13 @@ export interface PlayerStats {
   motm_count: number
 }
 
+export interface MatchPhoto {
+  id: string
+  match_id: string
+  url: string
+  created_at: string
+}
+
 export interface CornerDuo {
   taker: Player
   header: Player
