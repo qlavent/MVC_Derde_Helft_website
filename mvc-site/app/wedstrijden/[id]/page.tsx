@@ -72,8 +72,17 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
     fetchAll()
-    const interval = setInterval(fetchAll, 30000)
-    return () => clearInterval(interval)
+
+    const channel = supabase
+      .channel(`match-${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'corners', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'motm', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [fetchAll])
 
   if (loading || !match) {
@@ -269,7 +278,7 @@ export default function MatchDetailPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
-              tab === t ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'
+              tab === t ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'
             }`}
           >
             {t === 'live' ? 'Live' : 'Info'}
@@ -287,7 +296,7 @@ export default function MatchDetailPage() {
                 <div className="flex flex-col gap-2 flex-1">
                   <button
                     onClick={() => setShowGoalModal(true)}
-                    className="bg-[var(--sand)] text-black rounded-2xl py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                    className="bg-[var(--sand)] text-[var(--sand-fg)] rounded-2xl py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
                   >
                     ⚽ Doelpunt
                   </button>
@@ -309,7 +318,7 @@ export default function MatchDetailPage() {
                 <div className="flex flex-col gap-2 flex-1">
                   <button
                     onClick={addOpponentGoal}
-                    className="bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)] rounded-2xl py-4 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                    className="bg-[#2A1A1A] border border-[rgba(239,68,68,0.30)] text-[#F8D7D7] rounded-2xl py-4 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
                   >
                     ⚽ {opponentName}
                   </button>
@@ -345,30 +354,23 @@ export default function MatchDetailPage() {
                   let icon = ''
                   let label = ''
                   let sublabel = ''
-                  let isDimmed = false
                   let deleteFn: () => void = () => {}
 
                   if (ev.kind === 'goal') {
                     const g = ev.data as Goal
                     icon = '⚽'
                     label = isOurs ? playerName(g.player) : opponentName
-                    sublabel = 'Doelpunt'
+                    sublabel = isOurs ? 'Doelpunt' : 'Tegendoelpunt'
                     deleteFn = async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }
                   } else if (ev.kind === 'corner') {
                     const c = ev.data as Corner
-                    if (c.is_goal) {
-                      icon = '⚽'
-                      sublabel = 'Corner goal'
-                    } else {
-                      icon = '🎯'
-                      sublabel = 'Corner gemist'
-                      isDimmed = true
-                    }
+                    icon = c.is_goal ? '⚽' : '🎯'
+                    sublabel = c.is_goal ? 'Corner goal' : 'Corner gemist'
                     label = `${playerName(c.taker)} → ${playerName(c.header)}`
                     deleteFn = async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }
                   } else {
                     const c = ev.data as Card
-                    icon = (c.card_type === 'yellow') ? '🟨' : '🟥'
+                    icon = c.card_type === 'yellow' ? '🟨' : '🟥'
                     label = c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'
                     sublabel = c.card_type === 'yellow' ? 'Gele kaart' : 'Rode kaart'
                     deleteFn = async () => { await supabase.from('cards').delete().eq('id', c.id); fetchAll() }
@@ -376,10 +378,23 @@ export default function MatchDetailPage() {
 
                   // Home team → left, away team → right (mirrors scoreline)
                   const isLeftAligned = (isOurs && match.is_home_game) || (!isOurs && !match.is_home_game)
-                  const bubbleCls = isOurs
-                    ? isDimmed ? 'bg-[var(--muted)] text-[var(--subtle)]' : 'bg-[var(--sand)] text-black'
-                    : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)]'
-                  const subCls = (isOurs && !isDimmed) ? 'opacity-60' : 'text-[var(--subtle)]'
+
+                  // Event-specific bubble class
+                  let bubbleCls: string
+                  let subCls: string
+                  if (ev.kind === 'goal') {
+                    bubbleCls = isOurs ? 'ev-goal' : 'ev-opponent'
+                    subCls = isOurs ? 'opacity-60' : 'text-[var(--subtle)]'
+                  } else if (ev.kind === 'corner') {
+                    const c = ev.data as Corner
+                    if (c.is_goal) { bubbleCls = 'ev-corner-goal'; subCls = 'opacity-60' }
+                    else { bubbleCls = 'ev-corner-miss'; subCls = '' }
+                  } else {
+                    const c = ev.data as Card
+                    bubbleCls = c.card_type === 'yellow' ? 'ev-yellow' : 'ev-red'
+                    subCls = 'opacity-60'
+                  }
+
                   const tailCls = isLeftAligned ? 'rounded-bl-sm' : 'rounded-br-sm'
 
                   if (isLeftAligned) {
@@ -463,7 +478,7 @@ export default function MatchDetailPage() {
                   <button
                     key={p.id}
                     onClick={() => setMotmPlayer(p.id)}
-                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-black font-semibold' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-semibold' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
                   >
                     {p.first_name} {p.last_name}
                   </button>
@@ -494,7 +509,7 @@ export default function MatchDetailPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">📸 Foto's</h3>
                 <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-colors ${
-                  uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-black'
+                  uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-[var(--sand-fg)]'
                 }`}>
                   <Camera size={13} />
                   {uploading ? 'Uploaden…' : 'Voeg toe'}
@@ -641,7 +656,7 @@ function PlayerGrid({ players, selectedId, onSelect, accent = 'sand' }: {
   onSelect: (id: string) => void
   accent?: 'sand' | 'olive'
 }) {
-  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--olive)] text-white'
+  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[#22C55E] text-[#F0FFF4]'
   return (
     <div className="grid grid-cols-2 gap-2">
       {players.map((p) => (
@@ -697,7 +712,7 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
             <button
               onClick={() => { setIsCorner((v) => !v); setTakerId('') }}
               className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${
-                isCorner ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'
+                isCorner ? 'bg-[#22C55E] text-[#F0FFF4]' : 'bg-[var(--muted)] text-[var(--subtle)]'
               }`}
             >
               🎯 {isCorner ? 'Corner goal ✓ — tik om uit te zetten' : 'Was dit een corner goal?'}
@@ -721,7 +736,7 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
           <button
             disabled={!canSave}
             onClick={handleSave}
-            className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
+            className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-4 font-bold disabled:opacity-40"
           >
             {isCorner ? '⚽ Corner goal opslaan' : '⚽ Doelpunt opslaan'}
           </button>
@@ -748,19 +763,19 @@ function CornerModal({ players, onAdd, onClose }: {
           <PlayerGrid players={players} selectedId={takerId} onSelect={setTakerId} accent="olive" />
         </div>
         <div>
-          <p className="text-xs text-[var(--subtle)] mb-2">Kopballer</p>
+          <p className="text-xs text-[var(--subtle)] mb-2">Kopper</p>
           <PlayerGrid players={players} selectedId={headerId} onSelect={setHeaderId} accent="olive" />
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => setIsGoal(false)}
-            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${!isGoal ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${!isGoal ? 'bg-[var(--muted)] text-[var(--fg)] ring-2 ring-[var(--border)]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
           >
             🎯 Geen goal
           </button>
           <button
             onClick={() => setIsGoal(true)}
-            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[var(--sand)] text-black' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[#22C55E] text-[#F0FFF4]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
           >
             ⚽ Goal!
           </button>
@@ -768,7 +783,7 @@ function CornerModal({ players, onAdd, onClose }: {
         <button
           disabled={!takerId || !headerId}
           onClick={() => onAdd(takerId, headerId, isGoal)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
+          className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-4 font-bold disabled:opacity-40"
         >
           Opslaan
         </button>
@@ -837,7 +852,7 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
             ))}
           </div>
         </div>
-        <button onClick={() => onPick(excludeIds)} className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold flex items-center justify-center gap-2">
+        <button onClick={() => onPick(excludeIds)} className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-3 font-bold flex items-center justify-center gap-2">
           <Shuffle size={16} /> Willekeurig kiezen
         </button>
         <div className="border-t border-[var(--border)] pt-4">

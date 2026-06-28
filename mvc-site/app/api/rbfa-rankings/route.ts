@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { supabaseServer } from '@/lib/supabase'
 
 const RBFA_API = 'https://datalake-prod2018.rbfa.be/graphql'
 const TEAM_ID = '345149'
@@ -15,8 +16,18 @@ async function rbfaQuery(query: string) {
   return json.data
 }
 
+function currentSeason(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const startYear = now.getMonth() >= 7 ? y : y - 1
+  return `${startYear}-${startYear + 1}`
+}
+
 export async function GET() {
   try {
+    const db = supabaseServer()
+    const season = currentSeason()
+
     const seriesData = await rbfaQuery(`
       query {
         teamSeriesAndRankings(teamId: "${TEAM_ID}", language: nl) {
@@ -27,6 +38,37 @@ export async function GET() {
     `)
 
     const { series, rankings } = seriesData.teamSeriesAndRankings
+
+    // Snapshot into Supabase — upsert by season + serie_id + team_name
+    const rows: {
+      season: string
+      serie_id: string
+      serie_name: string
+      position: number
+      team_name: string
+      team_logo: string | null
+      points: number
+    }[] = []
+
+    series.forEach((s: { name: string; serieId: string }, si: number) => {
+      const teams: { name: string; logo: string; position: number; points: number }[] =
+        rankings[si]?.rankings?.[0]?.teams ?? []
+      for (const t of teams) {
+        rows.push({
+          season,
+          serie_id: s.serieId,
+          serie_name: s.name,
+          position: t.position,
+          team_name: t.name,
+          team_logo: t.logo || null,
+          points: t.points,
+        })
+      }
+    })
+
+    if (rows.length > 0) {
+      await db.from('rankings_snapshots').upsert(rows, { onConflict: 'season,serie_id,team_name' })
+    }
 
     const calData = await rbfaQuery(`
       query {

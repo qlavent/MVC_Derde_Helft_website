@@ -21,11 +21,11 @@ function seasonDateRange(season: string): { from: string; to: string } {
   }
 }
 
-function StatBadge({ value, label, color }: { value: number; label: string; color: string }) {
-  if (value === 0) return null
+function StatBadge({ value, label, color, display }: { value: number; label: string; color: string; display?: string }) {
+  if (value === 0 && !display) return null
   return (
     <div className={`flex flex-col items-center bg-[var(--muted)] rounded-lg px-2 py-1.5 ${color}`}>
-      <span className="text-sm font-bold tabular-nums">{value}</span>
+      <span className="text-sm font-bold tabular-nums">{display ?? value}</span>
       <span className="text-[9px] text-[var(--subtle)] leading-none mt-0.5">{label}</span>
     </div>
   )
@@ -238,13 +238,13 @@ export default function SpelersPage() {
       <div className="px-4 mb-4 flex gap-2">
         <button
           onClick={() => setPageTab('spelers')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'spelers' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'spelers' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
         >
           Spelers
         </button>
         <button
           onClick={() => setPageTab('duos')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'duos' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'duos' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
         >
           Corner duo&apos;s
         </button>
@@ -308,10 +308,10 @@ export default function SpelersPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold">{duo.taker.first_name} {duo.taker.last_name}</span>
-                      <span className="text-[var(--olive)] text-xs">→</span>
+                      <span className="text-[var(--subtle)] text-xs">→</span>
                       <span className="text-sm font-bold">{duo.header.first_name} {duo.header.last_name}</span>
                     </div>
-                    <p className="text-[10px] text-[var(--subtle)] mt-0.5">Nemer → Kopballer</p>
+                    <p className="text-[10px] text-[var(--subtle)] mt-0.5">Nemer → Kopper</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-2xl font-black text-[var(--sand)]">{Math.round(duo.success_rate * 100)}%</p>
@@ -320,11 +320,11 @@ export default function SpelersPage() {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
-                    <p className="text-lg font-black text-[var(--olive)]">{duo.total}</p>
+                    <p className="text-lg font-black text-[var(--fg)]">{duo.total}</p>
                     <p className="text-[9px] text-[var(--subtle)]">corners</p>
                   </div>
                   <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
-                    <p className="text-lg font-black text-[var(--sand)]">{duo.goals}</p>
+                    <p className="text-lg font-black text-[#22C55E]">{duo.goals}</p>
                     <p className="text-[9px] text-[var(--subtle)]">goals</p>
                   </div>
                   <div className="flex-1 bg-[var(--muted)] rounded-xl p-2 text-center">
@@ -395,9 +395,14 @@ export default function SpelersPage() {
                 </div>
                 {hasStats ? (
                   <div className="flex flex-wrap gap-2">
-                    <StatBadge value={s.goals} label="goals" color="text-[var(--sand)]" />
-                    <StatBadge value={s.corners_taken} label="corners" color="text-[var(--olive)]" />
-                    <StatBadge value={s.corners_headed} label="koppen" color="text-[var(--olive)]" />
+                    {(() => {
+                      const total = s.goals + s.header_goals
+                      if (total === 0) return null
+                      const sublabel = s.header_goals > 0 ? `${s.goals} reg · ${s.header_goals} corner` : 'goals'
+                      return <StatBadge value={total} label={sublabel} color="text-[#22C55E]" />
+                    })()}
+                    {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label={`corner nemer · ${s.kicker_goals}/${s.corners_taken}`} color="text-[var(--fg)]" />}
+                    {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label={`corner kopper · ${s.header_goals}/${s.corners_headed}`} color="text-[var(--fg)]" />}
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
                     <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
                   </div>
@@ -450,8 +455,11 @@ export default function SpelersPage() {
                 <p className="text-xs text-[var(--subtle)] mt-1">Wedstrijden gespeeld</p>
               </div>
               <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
-                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.goals}</p>
+                <p className="text-3xl font-black text-[var(--sand)]">{selectedPlayer.goals + selectedPlayer.header_goals}</p>
                 <p className="text-xs text-[var(--subtle)] mt-1">Doelpunten</p>
+                {selectedPlayer.header_goals > 0 && (
+                  <p className="text-[10px] text-[var(--subtle2)] mt-0.5">{selectedPlayer.goals} reg · {selectedPlayer.header_goals} corner</p>
+                )}
               </div>
             </div>
 
@@ -488,30 +496,23 @@ export default function SpelersPage() {
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   {selectedPlayer.corners_taken > 0 && (
                     <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                      <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_taken}</p>
-                      <p className="text-[10px] text-[var(--subtle)]">Genomen</p>
-                      <p className="text-sm font-bold text-[var(--sand)] mt-1">
+                      <p className="text-2xl font-black text-[var(--fg)]">
                         {Math.round((selectedPlayer.kicker_goals / selectedPlayer.corners_taken) * 100)}%
                       </p>
-                      <p className="text-[9px] text-[var(--subtle2)]">succes nemer</p>
+                      <p className="text-[10px] text-[var(--subtle)]">gescoord (nemer)</p>
+                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.kicker_goals}/{selectedPlayer.corners_taken} corners</p>
                     </div>
                   )}
                   {selectedPlayer.corners_headed > 0 && (
                     <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                      <p className="text-2xl font-black text-[var(--olive)]">{selectedPlayer.corners_headed}</p>
-                      <p className="text-[10px] text-[var(--subtle)]">Gekopt</p>
-                      <p className="text-sm font-bold text-[var(--sand)] mt-1">
+                      <p className="text-2xl font-black text-[var(--fg)]">
                         {Math.round((selectedPlayer.header_goals / selectedPlayer.corners_headed) * 100)}%
                       </p>
-                      <p className="text-[9px] text-[var(--subtle2)]">succes kopballer</p>
+                      <p className="text-[10px] text-[var(--subtle)]">gescoord (kopper)</p>
+                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.header_goals}/{selectedPlayer.corners_headed} corners</p>
                     </div>
                   )}
                 </div>
-                {selectedPlayer.corner_goals > 0 && (
-                  <div className="text-center bg-[var(--muted)] rounded-xl p-2">
-                    <span className="text-sm font-bold text-[var(--sand)]">{selectedPlayer.corner_goals} corner goals</span>
-                  </div>
-                )}
               </div>
             )}
 
