@@ -754,7 +754,7 @@ function CornerModal({ players, onAdd, onClose }: {
           <PlayerGrid players={players} selectedId={takerId} onSelect={setTakerId} accent="olive" />
         </div>
         <div>
-          <p className="text-xs text-[var(--subtle)] mb-2">Kopballer</p>
+          <p className="text-xs text-[var(--subtle)] mb-2">Kopper</p>
           <PlayerGrid players={players} selectedId={headerId} onSelect={setHeaderId} accent="olive" />
         </div>
         <div className="flex gap-3">
