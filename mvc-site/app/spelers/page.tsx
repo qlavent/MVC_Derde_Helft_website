@@ -396,8 +396,8 @@ export default function SpelersPage() {
                 {hasStats ? (
                   <div className="flex flex-wrap gap-2">
                     <StatBadge value={s.goals} label="goals" color="text-[#22C55E]" />
-                    {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label="gescoord (nemer)" color={s.kicker_goals > 0 ? 'text-[#22C55E]' : 'text-[var(--fg)]'} />}
-                    {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label="gescoord (kopper)" color={s.header_goals > 0 ? 'text-[#22C55E]' : 'text-[var(--fg)]'} />}
+                    {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label={`nemer · ${s.kicker_goals}/${s.corners_taken}`} color="text-[var(--fg)]" />}
+                    {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label={`kopper · ${s.header_goals}/${s.corners_headed}`} color="text-[var(--fg)]" />}
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
                     <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
                   </div>
@@ -488,20 +488,20 @@ export default function SpelersPage() {
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   {selectedPlayer.corners_taken > 0 && (
                     <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                      <p className={`text-2xl font-black ${selectedPlayer.kicker_goals > 0 ? 'text-[#22C55E]' : 'text-[var(--fg)]'}`}>
+                      <p className="text-2xl font-black text-[var(--fg)]">
                         {Math.round((selectedPlayer.kicker_goals / selectedPlayer.corners_taken) * 100)}%
                       </p>
                       <p className="text-[10px] text-[var(--subtle)]">gescoord (nemer)</p>
-                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.corners_taken} genomen · {selectedPlayer.kicker_goals} goal{selectedPlayer.kicker_goals !== 1 ? 's' : ''}</p>
+                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.kicker_goals}/{selectedPlayer.corners_taken} corners</p>
                     </div>
                   )}
                   {selectedPlayer.corners_headed > 0 && (
                     <div className="bg-[var(--muted)] rounded-xl p-3 text-center">
-                      <p className={`text-2xl font-black ${selectedPlayer.header_goals > 0 ? 'text-[#22C55E]' : 'text-[var(--fg)]'}`}>
+                      <p className="text-2xl font-black text-[var(--fg)]">
                         {Math.round((selectedPlayer.header_goals / selectedPlayer.corners_headed) * 100)}%
                       </p>
                       <p className="text-[10px] text-[var(--subtle)]">gescoord (kopper)</p>
-                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.corners_headed} gekopt · {selectedPlayer.header_goals} goal{selectedPlayer.header_goals !== 1 ? 's' : ''}</p>
+                      <p className="text-[9px] text-[var(--subtle2)] mt-1">{selectedPlayer.header_goals}/{selectedPlayer.corners_headed} corners</p>
                     </div>
                   )}
                 </div>
