@@ -80,11 +80,11 @@ body {
 
 /* ── Event bubble classes ────────────────────────────────────────────────── */
 
-/* Goal — gold burst */
+/* Goal — team colour (white dark / black light) */
 .ev-goal {
-  background: linear-gradient(140deg, #FFD95A 0%, #F5A623 100%);
-  color: #1A0F00;
-  box-shadow: 0 0 22px rgba(255, 200, 60, 0.40), 0 4px 14px rgba(0, 0, 0, 0.35);
+  background: var(--sand);
+  color: var(--sand-fg);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.10), 0 4px 14px rgba(0, 0, 0, 0.40);
 }
 
 /* Corner goal — emerald flash */
@@ -106,17 +106,16 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Yellow card — amber warning */
+/* Yellow card — solid amber, no ambiguity with goals */
 .ev-yellow {
-  background: rgba(251, 191, 36, 0.10);
-  color: #FDE68A;
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  box-shadow: 0 0 14px rgba(251, 191, 36, 0.16);
+  background: #D97706;
+  color: #FFFFFF;
+  box-shadow: 0 0 16px rgba(217, 119, 6, 0.45), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 [data-theme="light"] .ev-yellow {
-  color: #92660A;
-  border-color: rgba(180, 120, 0, 0.35);
-  box-shadow: 0 0 10px rgba(200, 140, 0, 0.10);
+  background: #B45309;
+  color: #FFFFFF;
+  box-shadow: 0 0 12px rgba(180, 83, 9, 0.30), 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 /* Red card — dramatic crimson */
