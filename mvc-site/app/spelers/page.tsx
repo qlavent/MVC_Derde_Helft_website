@@ -398,8 +398,8 @@ export default function SpelersPage() {
                     <StatBadge value={s.goals} label="goals" color="text-[#22C55E]" />
                     <StatBadge value={s.kicker_goals} label="corner goals (nemer)" color="text-[#22C55E]" />
                     <StatBadge value={s.corners_taken - s.kicker_goals} label="corners gemist (nemer)" color="text-[var(--fg)]" />
-                    <StatBadge value={s.header_goals} label="corner goals (kop)" color="text-[#22C55E]" />
-                    <StatBadge value={s.corners_headed - s.header_goals} label="kopballen gemist (kop)" color="text-[var(--fg)]" />
+                    <StatBadge value={s.header_goals} label="corner goals (kopper)" color="text-[#22C55E]" />
+                    <StatBadge value={s.corners_headed - s.header_goals} label="corners gemist (kopper)" color="text-[var(--fg)]" />
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
                     <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
                   </div>
