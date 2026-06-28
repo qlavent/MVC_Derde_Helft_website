@@ -11,11 +11,6 @@ import Link from 'next/link'
 
 type Tab = 'live' | 'info'
 
-type TimelineEvent =
-  | { kind: 'goal'; data: Goal; created_at: string }
-  | { kind: 'corner'; data: Corner; created_at: string }
-  | { kind: 'card'; data: Card; created_at: string }
-
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [match, setMatch] = useState<Match | null>(null)
@@ -29,7 +24,6 @@ export default function MatchDetailPage() {
   const [tab, setTab] = useState<Tab>('live')
   const [loading, setLoading] = useState(true)
 
-  // Modals
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [showCornerModal, setShowCornerModal] = useState(false)
   const [showCardModal, setShowCardModal] = useState(false)
@@ -52,7 +46,8 @@ export default function MatchDetailPage() {
       supabase.from('match_players').select('player_id').eq('match_id', id),
       supabase.from('goals').select('*, player:players(*)').eq('match_id', id).order('created_at'),
       supabase.from('corners').select('*, taker:players!corners_taker_id_fkey(*), header:players!corners_header_id_fkey(*)').eq('match_id', id).order('created_at'),
-      supabase.from('cards').select('*, player:players(*)').eq('match_id', id).order('created_at'),
+      // cards: order by id (created_at may not exist in older DB schemas)
+      supabase.from('cards').select('*, player:players(*)').eq('match_id', id).order('id'),
       supabase.from('motm').select('*, player:players(*)').eq('match_id', id).single(),
       supabase.from('kit_carriers').select('*, player:players(*)').eq('match_id', id).single(),
     ])
@@ -83,29 +78,24 @@ export default function MatchDetailPage() {
     )
   }
 
-  // Our score computed from events — no manual +/- for our side
-  const ourGoals = goals.filter((g) => !g.is_corner_goal).length
-  const ourCornerGoals = corners.filter((c) => c.is_goal).length
-  const ourScore = ourGoals + ourCornerGoals
-  const opponentScore = match.is_home_game
-    ? (match.manual_away_score ?? 0)
-    : (match.manual_home_score ?? 0)
+  // Our score: regular goals (player set, not is_corner_goal) + corners with is_goal
+  // Opponent score: goals with player_id = null (opponent goals entered via button)
+  const ourScore =
+    goals.filter((g) => g.player_id !== null && !g.is_corner_goal).length +
+    corners.filter((c) => c.is_goal).length
+  const opponentScore = goals.filter((g) => g.player_id === null).length
 
   const displayHomeScore = match.is_home_game ? ourScore : opponentScore
   const displayAwayScore = match.is_home_game ? opponentScore : ourScore
 
-  async function updateOpponentScore(delta: number) {
-    const field = match!.is_home_game ? 'manual_away_score' : 'manual_home_score'
-    const current = match!.is_home_game
-      ? (match!.manual_away_score ?? 0)
-      : (match!.manual_home_score ?? 0)
-    await supabase.from('matches').update({ [field]: Math.max(0, current + delta) }).eq('id', id)
-    fetchAll()
-  }
-
   async function addGoal(playerId: string) {
     await supabase.from('goals').insert({ match_id: id, player_id: playerId, is_corner_goal: false })
     setShowGoalModal(false)
+    fetchAll()
+  }
+
+  async function addOpponentGoal() {
+    await supabase.from('goals').insert({ match_id: id, player_id: null, is_corner_goal: false })
     fetchAll()
   }
 
@@ -118,21 +108,6 @@ export default function MatchDetailPage() {
   async function addCard(playerId: string, cardType: 'yellow' | 'red') {
     await supabase.from('cards').insert({ match_id: id, player_id: playerId, minute: null, card_type: cardType, source: 'manual' })
     setShowCardModal(false)
-    fetchAll()
-  }
-
-  async function deleteGoal(goalId: string) {
-    await supabase.from('goals').delete().eq('id', goalId)
-    fetchAll()
-  }
-
-  async function deleteCorner(cornerId: string) {
-    await supabase.from('corners').delete().eq('id', cornerId)
-    fetchAll()
-  }
-
-  async function deleteCard(cardId: string) {
-    await supabase.from('cards').delete().eq('id', cardId)
     fetchAll()
   }
 
@@ -164,12 +139,35 @@ export default function MatchDetailPage() {
 
   const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
 
-  // Build unified timeline sorted newest first
-  const timeline: TimelineEvent[] = [
-    ...goals.map((g) => ({ kind: 'goal' as const, data: g, created_at: g.created_at })),
-    ...corners.map((c) => ({ kind: 'corner' as const, data: c, created_at: c.created_at })),
-    ...cards.map((c) => ({ kind: 'card' as const, data: c, created_at: c.created_at })),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  // Build unified timeline sorted oldest → newest (chat reads top=oldest, bottom=newest)
+  type TlItem =
+    | { kind: 'goal'; data: Goal; isOurs: boolean; ts: number; rowKey: string }
+    | { kind: 'corner'; data: Corner; isOurs: true; ts: number; rowKey: string }
+    | { kind: 'card'; data: Card; isOurs: true; ts: number; rowKey: string }
+
+  const timeline: TlItem[] = [
+    ...goals.map((g, i) => ({
+      kind: 'goal' as const,
+      data: g,
+      isOurs: g.player_id !== null,
+      ts: g.created_at ? new Date(g.created_at).getTime() : i,
+      rowKey: `g-${g.id}`,
+    })),
+    ...corners.map((c, i) => ({
+      kind: 'corner' as const,
+      data: c,
+      isOurs: true as const,
+      ts: c.created_at ? new Date(c.created_at).getTime() : 1e13 + i,
+      rowKey: `c-${c.id}`,
+    })),
+    ...cards.map((c, i) => ({
+      kind: 'card' as const,
+      data: c,
+      isOurs: true as const,
+      ts: c.created_at ? new Date(c.created_at).getTime() : 2e13 + i,
+      rowKey: `k-${c.id}`,
+    })),
+  ].sort((a, b) => b.ts - a.ts)
 
   const matchDate = (() => {
     const r = new Date(match.start_time)
@@ -190,52 +188,28 @@ export default function MatchDetailPage() {
         <p className="text-xs text-[var(--subtle)] mb-2 text-center">
           {match.series_name} • {format(matchDate, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
         </p>
-
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
             {match.home_team_name}
           </span>
-
-          {/* Score */}
           <div className="flex flex-col items-center">
             {match.state !== 'upcoming' ? (
-              <div className="flex items-center gap-3">
-                {/* Home score */}
-                <div className="flex flex-col items-center gap-1">
-                  {!match.is_home_game && (
-                    <>
-                      <button onClick={() => updateOpponentScore(1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
-                    </>
-                  )}
+              <>
+                <div className="flex items-center gap-3">
                   <span className="text-3xl font-black tabular-nums">{displayHomeScore}</span>
-                  {!match.is_home_game && (
-                    <button onClick={() => updateOpponentScore(-1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
-                  )}
-                </div>
-
-                <span className="text-[var(--subtle2)] text-xl">—</span>
-
-                {/* Away score */}
-                <div className="flex flex-col items-center gap-1">
-                  {match.is_home_game && (
-                    <button onClick={() => updateOpponentScore(1)} className="w-10 h-10 rounded-xl bg-[var(--sand)]/20 text-[var(--sand)] text-2xl font-bold flex items-center justify-center active:scale-95">+</button>
-                  )}
+                  <span className="text-[var(--subtle2)]">—</span>
                   <span className="text-3xl font-black tabular-nums">{displayAwayScore}</span>
-                  {match.is_home_game && (
-                    <button onClick={() => updateOpponentScore(-1)} className="w-10 h-10 rounded-xl bg-[var(--muted)] text-[var(--subtle2)] text-2xl font-bold flex items-center justify-center active:scale-95">−</button>
-                  )}
                 </div>
-              </div>
+                {match.rbfa_home_score !== null && (
+                  <p className="text-[10px] text-[var(--subtle2)] mt-1">
+                    Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}
+                  </p>
+                )}
+              </>
             ) : (
               <span className="text-lg text-[var(--subtle)]">{format(matchDate, 'HH:mm')}</span>
             )}
-            {match.rbfa_home_score !== null && (
-              <p className="text-[10px] text-[var(--subtle2)] mt-1">
-                Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}
-              </p>
-            )}
           </div>
-
           <span className={`text-sm font-bold flex-1 text-right ${!match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
             {match.away_team_name}
           </span>
@@ -248,7 +222,7 @@ export default function MatchDetailPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
               tab === t ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'
             }`}
           >
@@ -261,89 +235,119 @@ export default function MatchDetailPage() {
         {/* LIVE TAB */}
         {tab === 'live' && (
           <div className="space-y-4">
-            {/* Action buttons */}
+            {/* Action buttons — mirrors scoreline: home left, away right */}
             {match.state !== 'upcoming' && (
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setShowGoalModal(true)}
-                  className="bg-[var(--sand)] text-black rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
-                >
-                  <span className="text-2xl">⚽</span>
-                  Doelpunt
-                </button>
-                <button
-                  onClick={() => setShowCornerModal(true)}
-                  className="bg-[var(--olive)] text-[var(--fg)] rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
-                >
-                  <span className="text-2xl">🎯</span>
-                  Corner
-                </button>
-                <button
-                  onClick={() => setShowCardModal(true)}
-                  className="bg-[var(--surface)] border border-yellow-500/50 text-[var(--fg)] rounded-2xl py-4 font-bold text-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
-                >
-                  <span className="text-2xl">🟨</span>
-                  Kaart
-                </button>
+              <div className="space-y-2">
+                {/* Row 1: goal buttons per team, aligned to their side */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={match.is_home_game ? () => setShowGoalModal(true) : addOpponentGoal}
+                    className={`rounded-2xl py-5 font-bold text-sm flex flex-col items-start pl-4 gap-0.5 active:scale-95 transition-transform ${
+                      match.is_home_game
+                        ? 'bg-[var(--sand)] text-black'
+                        : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)]'
+                    }`}
+                  >
+                    <span className="text-xl">⚽</span>
+                    <span className="text-xs leading-tight truncate max-w-full pr-2">{match.home_team_name}</span>
+                  </button>
+                  <button
+                    onClick={match.is_home_game ? addOpponentGoal : () => setShowGoalModal(true)}
+                    className={`rounded-2xl py-5 font-bold text-sm flex flex-col items-end pr-4 gap-0.5 active:scale-95 transition-transform ${
+                      !match.is_home_game
+                        ? 'bg-[var(--sand)] text-black'
+                        : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)]'
+                    }`}
+                  >
+                    <span className="text-xl">⚽</span>
+                    <span className="text-xs leading-tight truncate max-w-full pl-2">{match.away_team_name}</span>
+                  </button>
+                </div>
+                {/* Row 2: secondary actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setShowCornerModal(true)}
+                    className="bg-[var(--olive)] text-white rounded-2xl py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                  >
+                    🎯 Corner
+                  </button>
+                  <button
+                    onClick={() => setShowCardModal(true)}
+                    className="bg-[var(--surface)] border border-yellow-500/40 text-[var(--fg)] rounded-2xl py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                  >
+                    🟨 Kaart
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Timeline */}
+            {/* Chat-style timeline */}
             {timeline.length === 0 ? (
-              <p className="text-center text-[var(--subtle2)] py-8">Nog geen events</p>
+              <p className="text-center text-[var(--subtle2)] py-8 text-sm">Nog geen events</p>
             ) : (
-              <div className="space-y-2">
-                {timeline.map((ev, idx) => {
+              <div className="space-y-2 pt-2">
+                {timeline.map((ev) => {
+                  const isOurs = ev.isOurs
+
+                  let icon = ''
+                  let label = ''
+                  let sublabel = ''
+                  let deleteFn: () => void = () => {}
+
                   if (ev.kind === 'goal') {
                     const g = ev.data as Goal
-                    return (
-                      <div key={`g-${g.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
-                        <span className="text-lg flex-shrink-0">⚽</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{playerName(g.player)}</p>
-                          <p className="text-[10px] text-[var(--subtle2)]">#{timeline.length - idx}</p>
-                        </div>
-                        <button onClick={() => deleteGoal(g.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )
-                  }
-                  if (ev.kind === 'corner') {
+                    icon = '⚽'
+                    label = isOurs ? playerName(g.player) : 'Tegenstander'
+                    sublabel = isOurs ? 'Doelpunt' : 'Goal tegenstander'
+                    deleteFn = async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }
+                  } else if (ev.kind === 'corner') {
                     const c = ev.data as Corner
-                    return (
-                      <div key={`c-${c.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
-                        <span className="text-lg flex-shrink-0">{c.is_goal ? '⚽' : '🎯'}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">
-                            {playerName(c.taker)} → {playerName(c.header)}
-                          </p>
-                          <p className="text-[10px] text-[var(--olive)]">
-                            {c.is_goal ? 'Corner goal' : 'Corner'}
-                          </p>
-                        </div>
-                        <button onClick={() => deleteCorner(c.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    )
-                  }
-                  if (ev.kind === 'card') {
+                    icon = c.is_goal ? '⚽' : '🎯'
+                    label = `${playerName(c.taker)} → ${playerName(c.header)}`
+                    sublabel = c.is_goal ? 'Corner goal' : 'Corner'
+                    deleteFn = async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }
+                  } else {
                     const c = ev.data as Card
+                    icon = (c.card_type === 'yellow') ? '🟨' : '🟥'
+                    label = c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'
+                    sublabel = c.card_type === 'yellow' ? 'Gele kaart' : 'Rode kaart'
+                    deleteFn = async () => { await supabase.from('cards').delete().eq('id', c.id); fetchAll() }
+                  }
+
+                  // Home team → left, away team → right (mirrors scoreline)
+                  const isLeftAligned = (isOurs && match.is_home_game) || (!isOurs && !match.is_home_game)
+                  const bubbleCls = isOurs
+                    ? 'bg-[var(--sand)] text-black'
+                    : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)]'
+                  const subCls = isOurs ? 'opacity-60' : 'text-[var(--subtle)]'
+                  const tailCls = isLeftAligned ? 'rounded-bl-sm' : 'rounded-br-sm'
+
+                  if (isLeftAligned) {
                     return (
-                      <div key={`k-${c.id}`} className="bg-[var(--surface)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
-                        <span className={`w-5 h-7 rounded-sm flex-shrink-0 ${c.card_type === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'}</p>
-                          {c.source === 'rbfa' && <p className="text-[10px] text-[var(--subtle2)]">RBFA</p>}
+                      <div key={ev.rowKey} className="flex justify-start items-end gap-2">
+                        <div className={`${bubbleCls} rounded-2xl ${tailCls} px-4 py-3 max-w-[70%]`}>
+                          <p className="text-sm font-bold leading-tight">{label}</p>
+                          <p className={`text-xs mt-0.5 ${subCls}`}>{icon} {sublabel}</p>
                         </div>
-                        <button onClick={() => deleteCard(c.id)} className="text-red-400/50 hover:text-red-400 transition-colors p-1 flex-shrink-0">
-                          <X size={14} />
+                        <button onClick={deleteFn} className="text-red-400/40 hover:text-red-400 transition-colors p-1 mb-1 flex-shrink-0">
+                          <X size={13} />
                         </button>
                       </div>
                     )
+                  } else {
+                    return (
+                      <div key={ev.rowKey} className="flex justify-end items-end gap-2">
+                        <button onClick={deleteFn} className="text-red-400/40 hover:text-red-400 transition-colors p-1 mb-1 flex-shrink-0">
+                          <X size={13} />
+                        </button>
+                        <div className={`${bubbleCls} rounded-2xl ${tailCls} px-4 py-3 max-w-[70%]`}>
+                          <p className="text-sm font-bold leading-tight">{label}</p>
+                          <p className={`text-xs mt-0.5 ${subCls}`}>{icon} {sublabel}</p>
+                        </div>
+                      </div>
+                    )
                   }
-                  return null
+
                 })}
               </div>
             )}
@@ -353,7 +357,6 @@ export default function MatchDetailPage() {
         {/* INFO TAB */}
         {tab === 'info' && (
           <div className="space-y-4">
-            {/* Selection */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Selectie</h3>
@@ -377,7 +380,6 @@ export default function MatchDetailPage() {
               )}
             </div>
 
-            {/* Kit carrier */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold">🎽 Kleren</h3>
@@ -392,14 +394,10 @@ export default function MatchDetailPage() {
               )}
             </div>
 
-            {/* MOTM */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <h3 className="text-sm font-semibold mb-3">⭐ Man of the Match</h3>
-              {motm ? (
-                <p className="text-sm text-[var(--sand)] font-semibold mb-2">{playerName(motm.player)}</p>
-              ) : (
-                <p className="text-xs text-[var(--subtle2)] mb-2">Nog niet gekozen</p>
-              )}
+              {motm && <p className="text-sm text-[var(--sand)] font-semibold mb-2">{playerName(motm.player)}</p>}
+              {!motm && <p className="text-xs text-[var(--subtle2)] mb-2">Nog niet gekozen</p>}
               <div className="flex flex-wrap gap-2">
                 {selectedPlayers.map((p) => (
                   <button
@@ -413,7 +411,6 @@ export default function MatchDetailPage() {
               </div>
             </div>
 
-            {/* Instagram */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <h3 className="text-sm font-semibold mb-2">📸 Instagram post</h3>
               <input
@@ -435,12 +432,11 @@ export default function MatchDetailPage() {
         )}
       </div>
 
-      {/* MODALS */}
       {showGoalModal && (
         <GoalModal
           players={selectedPlayers}
-          onAddGoal={addGoal}
-          onAddCorner={addCorner}
+          onAddGoal={(pid) => { addGoal(pid); setShowGoalModal(false) }}
+          onAddCorner={(tid, hid, isGoal) => { addCorner(tid, hid, isGoal); setShowGoalModal(false) }}
           onClose={() => setShowGoalModal(false)}
         />
       )}
@@ -483,7 +479,7 @@ export default function MatchDetailPage() {
   )
 }
 
-// --- Sub-components (modals) ---
+// --- Modals ---
 
 function ModalWrapper({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -512,7 +508,7 @@ function PlayerGrid({ players, selectedId, onSelect, accent = 'sand' }: {
         <button
           key={p.id}
           onClick={() => onSelect(p.id)}
-          className={`py-3 px-3 rounded-xl text-sm font-semibold text-left transition-colors leading-tight ${
+          className={`py-3 px-3 rounded-xl text-sm font-semibold text-left leading-tight transition-colors ${
             selectedId === p.id ? activeCls : 'bg-[var(--muted)] text-[var(--fg)]'
           }`}
         >
@@ -534,20 +530,22 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
   const [isCorner, setIsCorner] = useState(false)
   const [takerId, setTakerId] = useState('')
 
+  const canSave = scorerId && (!isCorner || takerId)
+
   function handleSave() {
-    if (isCorner) {
+    if (!scorerId) return
+    if (isCorner && takerId) {
       onAddCorner(takerId, scorerId, true)
-    } else {
+    } else if (!isCorner) {
       onAddGoal(scorerId)
     }
+    // both paths call onClose via parent wrapper
   }
-
-  const canSave = scorerId && (!isCorner || takerId)
 
   return (
     <ModalWrapper title="⚽ Doelpunt" onClose={onClose}>
       {players.length === 0 ? (
-        <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+        <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie — voeg eerst spelers toe via Info</p>
       ) : (
         <div className="space-y-4">
           <div>
@@ -555,22 +553,20 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
             <PlayerGrid players={players} selectedId={scorerId} onSelect={setScorerId} accent="sand" />
           </div>
 
-          {/* Corner toggle — only visible once scorer selected */}
           {scorerId && (
             <button
               onClick={() => { setIsCorner((v) => !v); setTakerId('') }}
-              className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+              className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${
                 isCorner ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'
               }`}
             >
-              🎯 {isCorner ? 'Corner goal (aan) — tik om uit te zetten' : 'Was dit een corner goal?'}
+              🎯 {isCorner ? 'Corner goal ✓ — tik om uit te zetten' : 'Was dit een corner goal?'}
             </button>
           )}
 
-          {/* Taker picker — only when corner is on */}
           {isCorner && (
             <div>
-              <p className="text-xs text-[var(--subtle)] mb-2">
+              <p className="text-xs text-[var(--subtle)] mb-1">
                 Wie nam de corner? <span className="text-red-400">*verplicht</span>
               </p>
               <PlayerGrid
@@ -585,9 +581,9 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
           <button
             disabled={!canSave}
             onClick={handleSave}
-            className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40 transition-opacity"
+            className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
           >
-            {isCorner ? `⚽ Corner goal opslaan` : '⚽ Doelpunt opslaan'}
+            {isCorner ? '⚽ Corner goal opslaan' : '⚽ Doelpunt opslaan'}
           </button>
         </div>
       )}
@@ -595,7 +591,11 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
   )
 }
 
-function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (tid: string, hid: string, isGoal: boolean) => void; onClose: () => void }) {
+function CornerModal({ players, onAdd, onClose }: {
+  players: Player[]
+  onAdd: (tid: string, hid: string, isGoal: boolean) => void
+  onClose: () => void
+}) {
   const [takerId, setTakerId] = useState('')
   const [headerId, setHeaderId] = useState('')
   const [isGoal, setIsGoal] = useState(false)
@@ -637,7 +637,11 @@ function CornerModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (t
   )
 }
 
-function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid: string, type: 'yellow' | 'red') => void; onClose: () => void }) {
+function CardModal({ players, onAdd, onClose }: {
+  players: Player[]
+  onAdd: (pid: string, type: 'yellow' | 'red') => void
+  onClose: () => void
+}) {
   const [cardType, setCardType] = useState<'yellow' | 'red'>('yellow')
 
   return (
@@ -648,7 +652,7 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
             <button
               key={t}
               onClick={() => setCardType(t)}
-              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors bg-[var(--muted)] ${cardType === t ? 'ring-2 ring-[var(--sand)]' : ''}`}
+              className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 bg-[var(--muted)] transition-all ${cardType === t ? 'ring-2 ring-[var(--sand)]' : ''}`}
             >
               <span className={`w-5 h-7 rounded-sm ${t === 'yellow' ? 'bg-yellow-400' : 'bg-red-500'}`} />
               <span className="text-sm font-semibold">{t === 'yellow' ? 'Geel' : 'Rood'}</span>
@@ -656,10 +660,11 @@ function CardModal({ players, onAdd, onClose }: { players: Player[]; onAdd: (pid
           ))}
         </div>
         <p className="text-xs text-[var(--subtle)]">Wie krijgt de kaart?</p>
-        {players.length === 0 && (
+        {players.length === 0 ? (
           <p className="text-center text-[var(--subtle2)] py-4 text-sm">Geen spelers in selectie</p>
+        ) : (
+          <PlayerGrid players={players} selectedId="" onSelect={(pid) => onAdd(pid, cardType)} accent="sand" />
         )}
-        <PlayerGrid players={players} selectedId="" onSelect={(pid) => onAdd(pid, cardType)} accent="sand" />
       </div>
     </ModalWrapper>
   )
@@ -675,31 +680,24 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
   const [excludeIds, setExcludeIds] = useState<string[]>([])
   const [manualId, setManualId] = useState('')
 
-  function toggleExclude(id: string) {
-    setExcludeIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
-  }
-
   return (
     <ModalWrapper title="Kleren toewijzen" onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <p className="text-xs text-[var(--subtle)] mb-2">Sluit spelers uit van de loting:</p>
+          <p className="text-xs text-[var(--subtle)] mb-2">Sluit spelers uit:</p>
           <div className="flex flex-wrap gap-2">
             {players.map((p) => (
               <button
                 key={p.id}
-                onClick={() => toggleExclude(p.id)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${excludeIds.includes(p.id) ? 'bg-red-900/40 text-red-400 line-through' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
+                onClick={() => setExcludeIds((prev) => prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id])}
+                className={`text-xs px-3 py-1.5 rounded-lg ${excludeIds.includes(p.id) ? 'bg-red-900/40 text-red-400 line-through' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
               >
                 {p.first_name} {p.last_name}
               </button>
             ))}
           </div>
         </div>
-        <button
-          onClick={() => onPick(excludeIds)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold flex items-center justify-center gap-2"
-        >
+        <button onClick={() => onPick(excludeIds)} className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold flex items-center justify-center gap-2">
           <Shuffle size={16} /> Willekeurig kiezen
         </button>
         <div className="border-t border-[var(--border)] pt-4">
@@ -708,7 +706,7 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
             <option value="">Kies speler</option>
             {allPlayers.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
           </select>
-          <button disabled={!manualId} onClick={() => onManualPick(manualId)} className="w-full bg-[var(--muted)] text-[var(--fg)] rounded-xl py-3 font-semibold disabled:opacity-40">
+          <button disabled={!manualId} onClick={() => onManualPick(manualId)} className="w-full bg-[var(--muted)] rounded-xl py-3 font-semibold disabled:opacity-40">
             Bevestigen
           </button>
         </div>
@@ -717,22 +715,22 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
   )
 }
 
-function PlayerModal({ allPlayers, selectedIds, onAdd, onClose }: { allPlayers: Player[]; selectedIds: string[]; onAdd: (pid: string) => void; onClose: () => void }) {
+function PlayerModal({ allPlayers, selectedIds, onAdd, onClose }: {
+  allPlayers: Player[]
+  selectedIds: string[]
+  onAdd: (pid: string) => void
+  onClose: () => void
+}) {
   const unselected = allPlayers.filter((p) => !selectedIds.includes(p.id))
-
   return (
-    <ModalWrapper title="Speler toevoegen aan selectie" onClose={onClose}>
-      <div className="space-y-2 max-h-80 overflow-y-auto">
+    <ModalWrapper title="Speler toevoegen" onClose={onClose}>
+      <div className="space-y-2">
         {unselected.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onAdd(p.id)}
-            className="w-full text-left px-4 py-3 bg-[var(--muted)] rounded-xl text-sm hover:bg-[var(--border)] transition-colors"
-          >
+          <button key={p.id} onClick={() => onAdd(p.id)} className="w-full text-left px-4 py-3 bg-[var(--muted)] rounded-xl text-sm hover:bg-[var(--border)] transition-colors">
             {p.first_name} {p.last_name}
           </button>
         ))}
-        {unselected.length === 0 && <p className="text-center text-[var(--subtle2)] py-4">Alle spelers zijn al geselecteerd</p>}
+        {unselected.length === 0 && <p className="text-center text-[var(--subtle2)] py-4">Alle spelers geselecteerd</p>}
       </div>
     </ModalWrapper>
   )
