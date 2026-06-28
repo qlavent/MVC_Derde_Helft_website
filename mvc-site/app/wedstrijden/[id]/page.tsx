@@ -201,10 +201,12 @@ export default function MatchDetailPage() {
       ts: c.created_at ? new Date(c.created_at).getTime() : 2e13 + i,
       rowKey: `k-${c.id}`,
     })),
-    // Match start sentinel — sorts to bottom (oldest)
-    { kind: 'sentinel' as const, label: 'Wedstrijd gestart', ts: matchStartTs, rowKey: 'sentinel-start' },
-    // Match end sentinel — sorts to top only when finished
-    ...(match.state === 'finished'
+    // Start sentinel: only once kickoff time has passed
+    ...(Date.now() > matchStartTs
+      ? [{ kind: 'sentinel' as const, label: 'Wedstrijd gestart', ts: matchStartTs, rowKey: 'sentinel-start' }]
+      : []),
+    // End sentinel: only when RBFA has recorded a score (game officially done)
+    ...(match.rbfa_home_score !== null
       ? [{ kind: 'sentinel' as const, label: 'Wedstrijd afgelopen', ts: Infinity, rowKey: 'sentinel-end' }]
       : []),
   ].sort((a, b) => b.ts - a.ts)
