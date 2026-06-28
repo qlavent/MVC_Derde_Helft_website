@@ -23,6 +23,7 @@ export default function MatchDetailPage() {
   const [kitCarrier, setKitCarrier] = useState<KitCarrier | null>(null)
   const [photos, setPhotos] = useState<MatchPhoto[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('live')
   const [loading, setLoading] = useState(true)
@@ -119,16 +120,18 @@ export default function MatchDetailPage() {
 
   async function uploadPhoto(file: File) {
     setUploading(true)
+    setUploadError(null)
     try {
       const compressed = await compressImage(file)
       const path = `${id}/${Date.now()}.jpg`
       const { error: upErr } = await supabase.storage.from('match-photos').upload(path, compressed, { contentType: 'image/jpeg' })
-      if (upErr) throw upErr
+      if (upErr) throw new Error(`Storage: ${upErr.message}`)
       const { data: { publicUrl } } = supabase.storage.from('match-photos').getPublicUrl(path)
-      await supabase.from('match_photos').insert({ match_id: id, url: publicUrl })
+      const { error: dbErr } = await supabase.from('match_photos').insert({ match_id: id, url: publicUrl })
+      if (dbErr) throw new Error(`DB: ${dbErr.message}`)
       fetchAll()
     } catch (e) {
-      console.error('Upload failed', e)
+      setUploadError(e instanceof Error ? e.message : String(e))
     } finally {
       setUploading(false)
     }
@@ -508,6 +511,9 @@ export default function MatchDetailPage() {
                   />
                 </label>
               </div>
+              {uploadError && (
+                <p className="text-xs text-red-400 mb-2 break-all">{uploadError}</p>
+              )}
               {photos.length === 0 ? (
                 <p className="text-xs text-[var(--subtle2)]">Nog geen foto's</p>
               ) : (
