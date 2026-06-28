@@ -396,8 +396,8 @@ export default function SpelersPage() {
                 {hasStats ? (
                   <div className="flex flex-wrap gap-2">
                     <StatBadge value={s.goals} label="goals" color="text-[#22C55E]" />
-                    {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label={`nemer · ${s.kicker_goals}/${s.corners_taken}`} color="text-[var(--fg)]" />}
-                    {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label={`kopper · ${s.header_goals}/${s.corners_headed}`} color="text-[var(--fg)]" />}
+                    {s.corners_taken > 0 && <StatBadge value={s.corners_taken} display={`${Math.round((s.kicker_goals / s.corners_taken) * 100)}%`} label={`corner nemer · ${s.kicker_goals}/${s.corners_taken}`} color="text-[var(--fg)]" />}
+                    {s.corners_headed > 0 && <StatBadge value={s.corners_headed} display={`${Math.round((s.header_goals / s.corners_headed) * 100)}%`} label={`corner kopper · ${s.header_goals}/${s.corners_headed}`} color="text-[var(--fg)]" />}
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
                     <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
                   </div>
