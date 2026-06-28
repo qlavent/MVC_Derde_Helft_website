@@ -170,11 +170,14 @@ export default function MatchDetailPage() {
 
   const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
 
-  // Build unified timeline sorted oldest → newest (chat reads top=oldest, bottom=newest)
+  // Build unified timeline, newest at top
   type TlItem =
     | { kind: 'goal'; data: Goal; isOurs: boolean; ts: number; rowKey: string }
     | { kind: 'corner'; data: Corner; isOurs: true; ts: number; rowKey: string }
     | { kind: 'card'; data: Card; isOurs: true; ts: number; rowKey: string }
+    | { kind: 'sentinel'; label: string; ts: number; rowKey: string }
+
+  const matchStartTs = new Date(match.start_time).getTime()
 
   const timeline: TlItem[] = [
     ...goals.map((g, i) => ({
@@ -198,6 +201,12 @@ export default function MatchDetailPage() {
       ts: c.created_at ? new Date(c.created_at).getTime() : 2e13 + i,
       rowKey: `k-${c.id}`,
     })),
+    // Match start sentinel — sorts to bottom (oldest)
+    { kind: 'sentinel' as const, label: 'Wedstrijd gestart', ts: matchStartTs, rowKey: 'sentinel-start' },
+    // Match end sentinel — sorts to top only when finished
+    ...(match.state === 'finished'
+      ? [{ kind: 'sentinel' as const, label: 'Wedstrijd afgelopen', ts: Infinity, rowKey: 'sentinel-end' }]
+      : []),
   ].sort((a, b) => b.ts - a.ts)
 
   const matchDate = (() => {
@@ -313,6 +322,18 @@ export default function MatchDetailPage() {
             ) : (
               <div className="space-y-2 pt-2">
                 {timeline.map((ev) => {
+                  if (ev.kind === 'sentinel') {
+                    return (
+                      <div key={ev.rowKey} className="flex items-center gap-3 py-2">
+                        <div className="flex-1 h-px bg-[var(--border)]" />
+                        <span className="text-[10px] font-semibold text-[var(--subtle2)] uppercase tracking-widest whitespace-nowrap">
+                          {ev.label}
+                        </span>
+                        <div className="flex-1 h-px bg-[var(--border)]" />
+                      </div>
+                    )
+                  }
+
                   const isOurs = ev.isOurs
 
                   let icon = ''
