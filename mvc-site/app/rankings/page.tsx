@@ -50,12 +50,14 @@ export default function RankingsPage() {
   const [selectedSeason, setSelectedSeason] = useState(currentSeason)
   const [localStats, setLocalStats] = useState<OurStats | null>(null)
 
-  // RBFA data — current season only
+  // Standings — RBFA for current season, Supabase snapshot for historical
   const [series, setSeries] = useState<Series[]>([])
   const [rankingsBySeries, setRankingsBySeries] = useState<Team[][]>([])
   const [activeIdx, setActiveIdx] = useState(0)
   const [rbfaLoading, setRbfaLoading] = useState(true)
   const [rbfaError, setRbfaError] = useState<string | null>(null)
+
+  const isCurrentSeason = selectedSeason === currentSeason
 
   // Load seasons + local stats from Supabase
   useEffect(() => {
@@ -79,26 +81,58 @@ export default function RankingsPage() {
       })
   }, [selectedSeason])
 
-  // Load RBFA full table once — current season only
+  // Load standings: RBFA for current season, Supabase snapshot for historical
   useEffect(() => {
-    fetch('/api/rbfa-rankings')
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) throw new Error(d.error)
-        setSeries(d.series ?? [])
-        const byS: Team[][] = (d.rankings ?? []).map((r: { rankings: { teams: Team[] }[] }) =>
-          r.rankings?.[0]?.teams ?? []
-        )
-        setRankingsBySeries(byS)
-        const reeksIdx = (d.series ?? []).findIndex((s: Series) => s.name.toLowerCase().includes('reeks'))
-        setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
-      })
-      .catch(e => setRbfaError(e.message))
-      .finally(() => setRbfaLoading(false))
-  }, [])
+    setRbfaLoading(true)
+    setRbfaError(null)
+
+    if (isCurrentSeason) {
+      fetch('/api/rbfa-rankings')
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) throw new Error(d.error)
+          setSeries(d.series ?? [])
+          const byS: Team[][] = (d.rankings ?? []).map((r: { rankings: { teams: Team[] }[] }) =>
+            r.rankings?.[0]?.teams ?? []
+          )
+          setRankingsBySeries(byS)
+          const reeksIdx = (d.series ?? []).findIndex((s: Series) => s.name.toLowerCase().includes('reeks'))
+          setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
+        })
+        .catch(e => setRbfaError(e.message))
+        .finally(() => setRbfaLoading(false))
+    } else {
+      // Read snapshot from Supabase
+      supabase
+        .from('rankings_snapshots')
+        .select('*')
+        .eq('season', selectedSeason)
+        .order('position')
+        .then(({ data, error }) => {
+          if (error) throw new Error(error.message)
+          const rows = data ?? []
+          // Group by serie
+          const serieMap = new Map<string, { name: string; serieId: string; teams: Team[] }>()
+          for (const r of rows) {
+            if (!serieMap.has(r.serie_id)) {
+              serieMap.set(r.serie_id, { name: r.serie_name, serieId: r.serie_id, teams: [] })
+            }
+            serieMap.get(r.serie_id)!.teams.push({
+              name: r.team_name, logo: r.team_logo ?? '', position: r.position, points: r.points,
+            })
+          }
+          const serieList = Array.from(serieMap.values())
+          setSeries(serieList.map(s => ({ name: s.name, serieId: s.serieId })))
+          setRankingsBySeries(serieList.map(s => s.teams))
+          const reeksIdx = serieList.findIndex(s => s.name.toLowerCase().includes('reeks'))
+          setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
+        })
+        .catch((e: Error) => setRbfaError(e.message))
+        .finally(() => setRbfaLoading(false))
+    }
+  }, [selectedSeason, isCurrentSeason])
 
   const currentTeams = rankingsBySeries[activeIdx] ?? []
-  const isCurrentSeason = selectedSeason === currentSeason
   const formColors: Record<string, string> = {
     W: 'bg-green-500/20 text-green-400',
     G: 'bg-[var(--muted)] text-[var(--subtle)]',
@@ -160,13 +194,7 @@ export default function RankingsPage() {
 
       {/* Full standings — RBFA, current season only */}
       <div className="px-4 pb-28">
-        {!isCurrentSeason ? (
-          <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] p-6 text-center">
-            <p className="text-2xl mb-2">🏆</p>
-            <p className="text-sm text-[var(--subtle)]">Volledige stand voor {selectedSeason} is niet beschikbaar via RBFA.</p>
-            <p className="text-xs text-[var(--subtle2)] mt-1">Alleen jouw statistieken worden lokaal bijgehouden.</p>
-          </div>
-        ) : rbfaLoading ? (
+        {rbfaLoading ? (
           Array.from({length:6}).map((_,i) => <div key={i} className="bg-[var(--surface)] rounded-xl h-12 mb-2 animate-pulse" />)
         ) : rbfaError ? (
           <p className="text-center text-red-400 py-8 text-sm">{rbfaError}</p>
