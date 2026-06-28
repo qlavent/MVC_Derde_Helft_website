@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
@@ -27,6 +27,7 @@ export default function MatchDetailPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('live')
   const [loading, setLoading] = useState(true)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [showCornerModal, setShowCornerModal] = useState(false)
@@ -75,12 +76,14 @@ export default function MatchDetailPage() {
 
     const channel = supabase
       .channel(`match-${id}`)
+      .on('broadcast', { event: 'update' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'corners' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'motm' }, () => fetchAll())
       .subscribe((status) => { console.log('[realtime]', status) })
+    channelRef.current = channel
 
     // Fallback poll every 15s in case realtime drops
     const interval = setInterval(fetchAll, 15000)
@@ -110,27 +113,31 @@ export default function MatchDetailPage() {
   const displayAwayScore = match.is_home_game ? opponentScore : ourScore
   const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
 
+  function broadcast() {
+    channelRef.current?.send({ type: 'broadcast', event: 'update', payload: {} })
+  }
+
   async function addGoal(playerId: string) {
     await supabase.from('goals').insert({ match_id: id, player_id: playerId, is_corner_goal: false })
     setShowGoalModal(false)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function addOpponentGoal() {
     await supabase.from('goals').insert({ match_id: id, player_id: null, is_corner_goal: false })
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function addCorner(takerId: string, headerId: string, isGoal: boolean) {
     await supabase.from('corners').insert({ match_id: id, taker_id: takerId, header_id: headerId, minute: null, is_goal: isGoal })
     setShowCornerModal(false)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function addCard(playerId: string, cardType: 'yellow' | 'red') {
     await supabase.from('cards').insert({ match_id: id, player_id: playerId, minute: null, card_type: cardType, source: 'manual' })
     setShowCardModal(false)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function uploadPhoto(file: File) {
@@ -162,18 +169,18 @@ export default function MatchDetailPage() {
 
   async function setMotmPlayer(playerId: string) {
     await supabase.from('motm').upsert({ match_id: id, player_id: playerId }, { onConflict: 'match_id' })
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function addPlayerToSelection(playerId: string) {
     await supabase.from('match_players').upsert({ match_id: id, player_id: playerId, source: 'manual' }, { onConflict: 'match_id,player_id' })
     setShowPlayerModal(false)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function removePlayerFromSelection(playerId: string) {
     await supabase.from('match_players').delete().eq('match_id', id).eq('player_id', playerId)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   async function pickRandomKitCarrier(excludeIds: string[]) {
@@ -183,7 +190,7 @@ export default function MatchDetailPage() {
     const picked = eligible[Math.floor(Math.random() * eligible.length)]
     await supabase.from('kit_carriers').upsert({ match_id: id, player_id: picked.id }, { onConflict: 'match_id' })
     setShowKitModal(false)
-    fetchAll()
+    broadcast(); fetchAll()
   }
 
   const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
