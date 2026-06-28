@@ -158,7 +158,7 @@ export default function WielPage() {
         <button
           onClick={spin}
           disabled={spinning || items.length < 2}
-          className="mt-4 bg-[var(--sand)] text-black rounded-2xl px-8 py-4 font-black text-lg disabled:opacity-40 active:scale-95 transition-transform"
+          className="mt-4 bg-[var(--sand)] text-[var(--sand-fg)] rounded-2xl px-8 py-4 font-black text-lg disabled:opacity-40 active:scale-95 transition-transform"
         >
           {spinning ? 'Draaien...' : '🎡 Draai!'}
         </button>
@@ -174,7 +174,7 @@ export default function WielPage() {
             placeholder="Nieuw item..."
             className="flex-1 bg-[var(--surface)] rounded-xl px-4 py-3 text-sm text-[var(--fg)] placeholder-[var(--subtle)] border border-[var(--border)] focus:outline-none focus:border-[var(--sand)]"
           />
-          <button onClick={addItem} disabled={!newItem.trim()} className="bg-[var(--sand)] text-black rounded-xl px-4 disabled:opacity-40">
+          <button onClick={addItem} disabled={!newItem.trim()} className="bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl px-4 disabled:opacity-40">
             <Plus size={18} />
           </button>
         </div>

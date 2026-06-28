@@ -121,7 +121,7 @@ export default function KalenderPage() {
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 text-xs bg-[var(--sand)] text-black rounded-full px-3 py-1.5 font-semibold"
+            className="flex items-center gap-1 text-xs bg-[var(--sand)] text-[var(--sand-fg)] rounded-full px-3 py-1.5 font-semibold"
           >
             <Plus size={12} /> Nieuw
           </button>
@@ -160,7 +160,7 @@ export default function KalenderPage() {
               <div
                 key={day.toISOString()}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs relative ${
-                  isToday ? 'bg-[var(--sand)] text-black font-bold' :
+                  isToday ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-bold' :
                   hasItems ? 'bg-[var(--surface)] border border-[var(--olive)]/50' : 'text-[var(--subtle2)]'
                 }`}
               >
@@ -276,7 +276,7 @@ export default function KalenderPage() {
               <button
                 disabled={!form.title || !form.start_date}
                 onClick={addEvent}
-                className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold disabled:opacity-40"
+                className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-3 font-bold disabled:opacity-40"
               >
                 Toevoegen
               </button>

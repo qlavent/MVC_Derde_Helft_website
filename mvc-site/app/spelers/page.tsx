@@ -238,13 +238,13 @@ export default function SpelersPage() {
       <div className="px-4 mb-4 flex gap-2">
         <button
           onClick={() => setPageTab('spelers')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'spelers' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'spelers' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
         >
           Spelers
         </button>
         <button
           onClick={() => setPageTab('duos')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'duos' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${pageTab === 'duos' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'}`}
         >
           Corner duo&apos;s
         </button>

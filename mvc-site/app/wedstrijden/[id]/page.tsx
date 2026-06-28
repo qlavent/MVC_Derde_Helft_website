@@ -269,7 +269,7 @@ export default function MatchDetailPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
-              tab === t ? 'bg-[var(--sand)] text-black' : 'bg-[var(--surface)] text-[var(--subtle)]'
+              tab === t ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--surface)] text-[var(--subtle)]'
             }`}
           >
             {t === 'live' ? 'Live' : 'Info'}
@@ -287,7 +287,7 @@ export default function MatchDetailPage() {
                 <div className="flex flex-col gap-2 flex-1">
                   <button
                     onClick={() => setShowGoalModal(true)}
-                    className="bg-[var(--sand)] text-black rounded-2xl py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                    className="bg-[var(--sand)] text-[var(--sand-fg)] rounded-2xl py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
                   >
                     ⚽ Doelpunt
                   </button>
@@ -469,7 +469,7 @@ export default function MatchDetailPage() {
                   <button
                     key={p.id}
                     onClick={() => setMotmPlayer(p.id)}
-                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-black font-semibold' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${motm?.player_id === p.id ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-semibold' : 'bg-[var(--muted)] text-[var(--fg)]'}`}
                   >
                     {p.first_name} {p.last_name}
                   </button>
@@ -500,7 +500,7 @@ export default function MatchDetailPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">📸 Foto's</h3>
                 <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-colors ${
-                  uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-black'
+                  uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-[var(--sand-fg)]'
                 }`}>
                   <Camera size={13} />
                   {uploading ? 'Uploaden…' : 'Voeg toe'}
@@ -647,7 +647,7 @@ function PlayerGrid({ players, selectedId, onSelect, accent = 'sand' }: {
   onSelect: (id: string) => void
   accent?: 'sand' | 'olive'
 }) {
-  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-black' : 'bg-[var(--olive)] text-white'
+  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--olive)] text-white'
   return (
     <div className="grid grid-cols-2 gap-2">
       {players.map((p) => (
@@ -727,7 +727,7 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
           <button
             disabled={!canSave}
             onClick={handleSave}
-            className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
+            className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-4 font-bold disabled:opacity-40"
           >
             {isCorner ? '⚽ Corner goal opslaan' : '⚽ Doelpunt opslaan'}
           </button>
@@ -766,7 +766,7 @@ function CornerModal({ players, onAdd, onClose }: {
           </button>
           <button
             onClick={() => setIsGoal(true)}
-            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[var(--sand)] text-black' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
           >
             ⚽ Goal!
           </button>
@@ -774,7 +774,7 @@ function CornerModal({ players, onAdd, onClose }: {
         <button
           disabled={!takerId || !headerId}
           onClick={() => onAdd(takerId, headerId, isGoal)}
-          className="w-full bg-[var(--sand)] text-black rounded-xl py-4 font-bold disabled:opacity-40"
+          className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-4 font-bold disabled:opacity-40"
         >
           Opslaan
         </button>
@@ -843,7 +843,7 @@ function KitModal({ players, allPlayers, onPick, onClose, onManualPick }: {
             ))}
           </div>
         </div>
-        <button onClick={() => onPick(excludeIds)} className="w-full bg-[var(--sand)] text-black rounded-xl py-3 font-bold flex items-center justify-center gap-2">
+        <button onClick={() => onPick(excludeIds)} className="w-full bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl py-3 font-bold flex items-center justify-center gap-2">
           <Shuffle size={16} /> Willekeurig kiezen
         </button>
         <div className="border-t border-[var(--border)] pt-4">
