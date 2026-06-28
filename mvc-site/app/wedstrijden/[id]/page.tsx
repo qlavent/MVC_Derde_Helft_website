@@ -309,7 +309,7 @@ export default function MatchDetailPage() {
                 <div className="flex flex-col gap-2 flex-1">
                   <button
                     onClick={addOpponentGoal}
-                    className="bg-[var(--surface)] border border-[var(--border)] text-[var(--subtle)] rounded-2xl py-4 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                    className="bg-[#2A1A1A] border border-[rgba(239,68,68,0.30)] text-[#F8D7D7] rounded-2xl py-4 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
                   >
                     ⚽ {opponentName}
                   </button>
