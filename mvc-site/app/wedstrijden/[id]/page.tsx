@@ -647,7 +647,7 @@ function PlayerGrid({ players, selectedId, onSelect, accent = 'sand' }: {
   onSelect: (id: string) => void
   accent?: 'sand' | 'olive'
 }) {
-  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--olive)] text-white'
+  const activeCls = accent === 'sand' ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[#22C55E] text-[#F0FFF4]'
   return (
     <div className="grid grid-cols-2 gap-2">
       {players.map((p) => (
@@ -703,7 +703,7 @@ function GoalModal({ players, onAddGoal, onAddCorner, onClose }: {
             <button
               onClick={() => { setIsCorner((v) => !v); setTakerId('') }}
               className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${
-                isCorner ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'
+                isCorner ? 'bg-[#22C55E] text-[#F0FFF4]' : 'bg-[var(--muted)] text-[var(--subtle)]'
               }`}
             >
               🎯 {isCorner ? 'Corner goal ✓ — tik om uit te zetten' : 'Was dit een corner goal?'}
@@ -760,13 +760,13 @@ function CornerModal({ players, onAdd, onClose }: {
         <div className="flex gap-3">
           <button
             onClick={() => setIsGoal(false)}
-            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${!isGoal ? 'bg-[var(--olive)] text-white' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${!isGoal ? 'bg-[var(--muted)] text-[var(--fg)] ring-2 ring-[var(--border)]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
           >
             🎯 Geen goal
           </button>
           <button
             onClick={() => setIsGoal(true)}
-            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
+            className={`flex-1 py-4 rounded-xl font-semibold text-sm transition-colors ${isGoal ? 'bg-[#22C55E] text-[#F0FFF4]' : 'bg-[var(--muted)] text-[var(--subtle)]'}`}
           >
             ⚽ Goal!
           </button>

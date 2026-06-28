@@ -80,18 +80,18 @@ body {
 
 /* ── Event bubble classes ────────────────────────────────────────────────── */
 
-/* Goal — team colour (white dark / black light) */
-.ev-goal {
-  background: var(--sand);
-  color: var(--sand-fg);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.10), 0 4px 14px rgba(0, 0, 0, 0.40);
-}
-
-/* Corner goal — emerald flash */
+/* Goal + corner goal — both are goals, same green */
+.ev-goal,
 .ev-corner-goal {
-  background: linear-gradient(140deg, #22C55E 0%, #16A34A 100%);
-  color: #021A08;
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.40), 0 4px 14px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(140deg, #22C55E 0%, #15803D 100%);
+  color: #F0FFF4;
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.45), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+[data-theme="light"] .ev-goal,
+[data-theme="light"] .ev-corner-goal {
+  background: linear-gradient(140deg, #16A34A 0%, #15803D 100%);
+  color: #F0FFF4;
+  box-shadow: 0 0 16px rgba(22, 163, 74, 0.30), 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 /* Corner miss — dim glass, barely visible */
