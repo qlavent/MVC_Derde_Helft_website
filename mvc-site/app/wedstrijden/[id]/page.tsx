@@ -75,11 +75,11 @@ export default function MatchDetailPage() {
 
     const channel = supabase
       .channel(`match-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `match_id=eq.${id}` }, () => fetchAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'corners', filter: `match_id=eq.${id}` }, () => fetchAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${id}` }, () => fetchAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players', filter: `match_id=eq.${id}` }, () => fetchAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'motm', filter: `match_id=eq.${id}` }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'corners' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_players' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'motm' }, () => fetchAll())
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
