@@ -19,13 +19,7 @@ export default function BottomNav() {
 
   return (
     <div className="fixed bottom-5 left-0 right-0 z-50 flex items-center justify-center px-4">
-      <div className="flex items-center gap-1 px-3 py-2 rounded-2xl shadow-xl"
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-        }}
-      >
+      <div className="glass flex items-center gap-1 px-3 py-2 rounded-2xl">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== '/' && pathname.startsWith(href))
           return (

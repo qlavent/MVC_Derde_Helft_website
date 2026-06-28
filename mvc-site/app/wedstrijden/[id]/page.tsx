@@ -345,30 +345,23 @@ export default function MatchDetailPage() {
                   let icon = ''
                   let label = ''
                   let sublabel = ''
-                  let isDimmed = false
                   let deleteFn: () => void = () => {}
 
                   if (ev.kind === 'goal') {
                     const g = ev.data as Goal
                     icon = '⚽'
                     label = isOurs ? playerName(g.player) : opponentName
-                    sublabel = 'Doelpunt'
+                    sublabel = isOurs ? 'Doelpunt' : 'Tegendoelpunt'
                     deleteFn = async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }
                   } else if (ev.kind === 'corner') {
                     const c = ev.data as Corner
-                    if (c.is_goal) {
-                      icon = '⚽'
-                      sublabel = 'Corner goal'
-                    } else {
-                      icon = '🎯'
-                      sublabel = 'Corner gemist'
-                      isDimmed = true
-                    }
+                    icon = c.is_goal ? '⚽' : '🎯'
+                    sublabel = c.is_goal ? 'Corner goal' : 'Corner gemist'
                     label = `${playerName(c.taker)} → ${playerName(c.header)}`
                     deleteFn = async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }
                   } else {
                     const c = ev.data as Card
-                    icon = (c.card_type === 'yellow') ? '🟨' : '🟥'
+                    icon = c.card_type === 'yellow' ? '🟨' : '🟥'
                     label = c.player ? playerName(c.player) : c.player_name_rbfa ?? '—'
                     sublabel = c.card_type === 'yellow' ? 'Gele kaart' : 'Rode kaart'
                     deleteFn = async () => { await supabase.from('cards').delete().eq('id', c.id); fetchAll() }
@@ -376,10 +369,23 @@ export default function MatchDetailPage() {
 
                   // Home team → left, away team → right (mirrors scoreline)
                   const isLeftAligned = (isOurs && match.is_home_game) || (!isOurs && !match.is_home_game)
-                  const bubbleCls = isOurs
-                    ? isDimmed ? 'bg-[var(--muted)] text-[var(--subtle)]' : 'bg-[var(--sand)] text-black'
-                    : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)]'
-                  const subCls = (isOurs && !isDimmed) ? 'opacity-60' : 'text-[var(--subtle)]'
+
+                  // Event-specific bubble class
+                  let bubbleCls: string
+                  let subCls: string
+                  if (ev.kind === 'goal') {
+                    bubbleCls = isOurs ? 'ev-goal' : 'ev-opponent'
+                    subCls = isOurs ? 'opacity-60' : 'text-[var(--subtle)]'
+                  } else if (ev.kind === 'corner') {
+                    const c = ev.data as Corner
+                    if (c.is_goal) { bubbleCls = 'ev-corner-goal'; subCls = 'opacity-60' }
+                    else { bubbleCls = 'ev-corner-miss'; subCls = '' }
+                  } else {
+                    const c = ev.data as Card
+                    bubbleCls = c.card_type === 'yellow' ? 'ev-yellow' : 'ev-red'
+                    subCls = 'opacity-60'
+                  }
+
                   const tailCls = isLeftAligned ? 'rounded-bl-sm' : 'rounded-br-sm'
 
                   if (isLeftAligned) {

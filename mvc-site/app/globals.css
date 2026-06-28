@@ -2,55 +2,156 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #0a0a0a;
-  --fg: #ffffff;
-  --surface: #1a1a1a;
-  --muted: #2a2a2a;
-  --border: #2a2a2a;
-  --sand: #C8B99A;
-  --sand-fg: #0a0a0a;
-  --olive: #6B7045;
-  --subtle: #666666;
-  --subtle2: #444444;
+  /* Dark mode (default) */
+  --bg: #0C0C0F;
+  --fg: #F0F4F8;
+  --surface: #1C1C22;
+  --muted: #26262E;
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* Accent — white (team colour) */
+  --sand: #FFFFFF;
+  --sand-fg: #0C0C0F;
+
+  /* Success / corner */
+  --olive: #22C55E;
+
+  /* Text hierarchy */
+  --subtle: rgba(240, 244, 248, 0.42);
+  --subtle2: rgba(240, 244, 248, 0.24);
+
+  /* Glass layer */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 [data-theme="light"] {
-  --bg: #F5F0E8;
-  --fg: #0a0a0a;
-  --surface: #ffffff;
-  --muted: #EDE8DE;
-  --border: #DDD8CE;
-  --sand: #8B7355;
-  --sand-fg: #ffffff;
-  --olive: #5A6035;
-  --subtle: #888888;
-  --subtle2: #aaaaaa;
+  --bg: #F2F2F7;
+  --fg: #0C0C0F;
+  --surface: #FFFFFF;
+  --muted: #E8E8EF;
+  --border: rgba(0, 0, 0, 0.08);
+
+  /* Accent — black (team colour) */
+  --sand: #0C0C0F;
+  --sand-fg: #FFFFFF;
+  --olive: #16A34A;
+
+  --subtle: rgba(12, 12, 15, 0.45);
+  --subtle2: rgba(12, 12, 15, 0.28);
+
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.92);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.98);
 }
 
+/* ── Background ─────────────────────────────────────────────────────────── */
+html {
+  min-height: 100%;
+  /* Atmospheric dark — subtle warm-cool gradient at edges */
+  background:
+    radial-gradient(ellipse 700px 400px at 0% 0%, rgba(255, 255, 255, 0.02), transparent 55%),
+    radial-gradient(ellipse 500px 300px at 100% 100%, rgba(100, 120, 200, 0.04), transparent 55%),
+    #0C0C0F;
+}
+html[data-theme="light"] {
+  background: #F2F2F7;
+}
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01';
+  min-height: 100vh;
 }
 
-/* Safe area for bottom nav on iOS */
+/* ── Glass utility ───────────────────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Event bubble classes ────────────────────────────────────────────────── */
+
+/* Goal — gold burst */
+.ev-goal {
+  background: linear-gradient(140deg, #FFD95A 0%, #F5A623 100%);
+  color: #1A0F00;
+  box-shadow: 0 0 22px rgba(255, 200, 60, 0.40), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* Corner goal — emerald flash */
+.ev-corner-goal {
+  background: linear-gradient(140deg, #22C55E 0%, #16A34A 100%);
+  color: #021A08;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.40), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* Corner miss — dim glass, barely visible */
+.ev-corner-miss {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--subtle);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .ev-corner-miss {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--subtle);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Yellow card — amber warning */
+.ev-yellow {
+  background: rgba(251, 191, 36, 0.10);
+  color: #FDE68A;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.16);
+}
+[data-theme="light"] .ev-yellow {
+  color: #92660A;
+  border-color: rgba(180, 120, 0, 0.35);
+  box-shadow: 0 0 10px rgba(200, 140, 0, 0.10);
+}
+
+/* Red card — dramatic crimson */
+.ev-red {
+  background: linear-gradient(140deg, #EF4444 0%, #991B1B 100%);
+  color: #FFFFFF;
+  box-shadow: 0 0 28px rgba(239, 68, 68, 0.55), 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* Opponent goal — cold neutral glass */
+.ev-opponent {
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+h1, h2, h3 { letter-spacing: -0.025em; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ── Transitions ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.1s ease,
+    box-shadow 0.25s ease;
+}
+
+/* ── Safe area ──────────────────────────────────────────────────────────── */
 .pb-safe {
   padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
-/* Typography improvements */
-h1, h2, h3 {
-  letter-spacing: -0.02em;
-}
-
-/* Smooth color transitions for theme */
-*, *::before, *::after {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.1s ease;
-}
-
-/* Input text color follows theme */
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
 input, textarea, select {
   color: var(--fg);
   caret-color: var(--fg);
@@ -58,94 +159,36 @@ input, textarea, select {
 }
 [data-theme="light"] input,
 [data-theme="light"] textarea,
-[data-theme="light"] select {
-  color-scheme: light;
-}
-input::placeholder, textarea::placeholder {
-  color: var(--subtle);
-}
+[data-theme="light"] select { color-scheme: light; }
+input::placeholder, textarea::placeholder { color: var(--subtle); }
+select option { background: var(--surface); color: var(--fg); }
 
-/* Better select styling */
-select option {
-  background: var(--surface);
-  color: var(--fg);
-}
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* react-mobile-picker theme */
+/* ── react-mobile-picker ────────────────────────────────────────────────── */
 .react-mobile-picker { background: transparent !important; }
 .react-mobile-picker-column { color: var(--fg) !important; }
 .react-mobile-picker-item { color: var(--subtle) !important; font-size: 1rem !important; }
 .react-mobile-picker-item-selected { color: var(--fg) !important; font-weight: 700 !important; font-size: 1.1rem !important; }
-.react-mobile-picker-highlight {
-  background: var(--muted) !important;
-  border: none !important;
-}
+.react-mobile-picker-highlight { background: var(--muted) !important; border: none !important; }
 
-/* react-datepicker theme */
-.react-datepicker {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-  color: var(--fg) !important;
-  font-family: inherit !important;
-  border-radius: 1rem !important;
-}
-.react-datepicker__header {
-  background: var(--muted) !important;
-  border-color: var(--border) !important;
-  border-radius: 1rem 1rem 0 0 !important;
-}
-.react-datepicker__current-month,
-.react-datepicker__day-name,
-.react-datepicker-time__header {
-  color: var(--fg) !important;
-}
-.react-datepicker__day {
-  color: var(--fg) !important;
-  border-radius: 0.5rem !important;
-}
-.react-datepicker__day:hover {
-  background: var(--muted) !important;
-}
-.react-datepicker__day--selected,
-.react-datepicker__day--keyboard-selected {
-  background: var(--sand) !important;
-  color: var(--sand-fg) !important;
-}
+/* ── react-datepicker ───────────────────────────────────────────────────── */
+.react-datepicker { background: var(--surface) !important; border-color: var(--border) !important; color: var(--fg) !important; font-family: inherit !important; border-radius: 1rem !important; }
+.react-datepicker__header { background: var(--muted) !important; border-color: var(--border) !important; border-radius: 1rem 1rem 0 0 !important; }
+.react-datepicker__current-month, .react-datepicker__day-name, .react-datepicker-time__header { color: var(--fg) !important; }
+.react-datepicker__day { color: var(--fg) !important; border-radius: 0.5rem !important; }
+.react-datepicker__day:hover { background: var(--muted) !important; }
+.react-datepicker__day--selected, .react-datepicker__day--keyboard-selected { background: var(--sand) !important; color: var(--sand-fg) !important; }
 .react-datepicker__day--outside-month { opacity: 0.3; }
-.react-datepicker__time-container {
-  border-color: var(--border) !important;
-}
-.react-datepicker__time-box,
-.react-datepicker__time {
-  background: var(--surface) !important;
-}
-.react-datepicker__time-list-item {
-  color: var(--fg) !important;
-}
-.react-datepicker__time-list-item:hover {
-  background: var(--muted) !important;
-}
-.react-datepicker__time-list-item--selected {
-  background: var(--sand) !important;
-  color: var(--sand-fg) !important;
-}
-.react-datepicker__navigation-icon::before {
-  border-color: var(--subtle) !important;
-}
+.react-datepicker__time-container { border-color: var(--border) !important; }
+.react-datepicker__time-box, .react-datepicker__time { background: var(--surface) !important; }
+.react-datepicker__time-list-item { color: var(--fg) !important; }
+.react-datepicker__time-list-item:hover { background: var(--muted) !important; }
+.react-datepicker__time-list-item--selected { background: var(--sand) !important; color: var(--sand-fg) !important; }
+.react-datepicker__navigation-icon::before { border-color: var(--subtle) !important; }
 .react-datepicker-popper { z-index: 60 !important; }
-
-.scrollbar-none { scrollbar-width: none; }
-.scrollbar-none::-webkit-scrollbar { display: none; }
-
-/* Improved scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
-}
