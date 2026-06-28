@@ -397,9 +397,9 @@ export default function SpelersPage() {
                   <div className="flex flex-wrap gap-2">
                     <StatBadge value={s.goals} label="goals" color="text-[#22C55E]" />
                     <StatBadge value={s.kicker_goals} label="corner goals (nemer)" color="text-[#22C55E]" />
+                    <StatBadge value={s.corners_taken - s.kicker_goals} label="corners gemist" color="text-[var(--fg)]" />
                     <StatBadge value={s.header_goals} label="corner goals (kop)" color="text-[#22C55E]" />
-                    <StatBadge value={s.corners_taken} label="corners genomen" color="text-[var(--fg)]" />
-                    <StatBadge value={s.corners_headed} label="kopballen" color="text-[var(--fg)]" />
+                    <StatBadge value={s.corners_headed - s.header_goals} label="kopballen gemist" color="text-[var(--fg)]" />
                     <StatBadge value={s.yellow_cards} label="geel" color="text-yellow-400" />
                     <StatBadge value={s.red_cards} label="rood" color="text-red-400" />
                   </div>
