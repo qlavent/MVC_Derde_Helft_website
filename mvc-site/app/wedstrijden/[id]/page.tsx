@@ -288,6 +288,7 @@ export default function MatchDetailPage() {
                   let icon = ''
                   let label = ''
                   let sublabel = ''
+                  let isDimmed = false
                   let deleteFn: () => void = () => {}
 
                   if (ev.kind === 'goal') {
@@ -298,9 +299,15 @@ export default function MatchDetailPage() {
                     deleteFn = async () => { await supabase.from('goals').delete().eq('id', g.id); fetchAll() }
                   } else if (ev.kind === 'corner') {
                     const c = ev.data as Corner
-                    icon = c.is_goal ? '⚽' : '🎯'
+                    if (c.is_goal) {
+                      icon = '⚽'
+                      sublabel = 'Corner goal'
+                    } else {
+                      icon = '🎯'
+                      sublabel = 'Corner gemist'
+                      isDimmed = true
+                    }
                     label = `${playerName(c.taker)} → ${playerName(c.header)}`
-                    sublabel = c.is_goal ? 'Corner goal' : 'Corner'
                     deleteFn = async () => { await supabase.from('corners').delete().eq('id', c.id); fetchAll() }
                   } else {
                     const c = ev.data as Card
@@ -313,9 +320,9 @@ export default function MatchDetailPage() {
                   // Home team → left, away team → right (mirrors scoreline)
                   const isLeftAligned = (isOurs && match.is_home_game) || (!isOurs && !match.is_home_game)
                   const bubbleCls = isOurs
-                    ? 'bg-[var(--sand)] text-black'
+                    ? isDimmed ? 'bg-[var(--muted)] text-[var(--subtle)]' : 'bg-[var(--sand)] text-black'
                     : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)]'
-                  const subCls = isOurs ? 'opacity-60' : 'text-[var(--subtle)]'
+                  const subCls = (isOurs && !isDimmed) ? 'opacity-60' : 'text-[var(--subtle)]'
                   const tailCls = isLeftAligned ? 'rounded-bl-sm' : 'rounded-br-sm'
 
                   if (isLeftAligned) {
