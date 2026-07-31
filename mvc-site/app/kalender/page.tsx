@@ -116,7 +116,7 @@ export default function KalenderPage() {
         <div className="flex gap-2">
           <button
             onClick={copyIcalUrl}
-            className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5"
+            className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-sand-30 rounded-full px-3 py-1.5"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
             {copied ? 'Gekopieerd!' : 'iCal link'}
@@ -163,7 +163,7 @@ export default function KalenderPage() {
                 key={day.toISOString()}
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs relative ${
                   isToday ? 'bg-[var(--sand)] text-[var(--sand-fg)] font-bold' :
-                  hasItems ? 'bg-[var(--surface)] border border-[var(--olive)]/50' : 'text-[var(--subtle2)]'
+                  hasItems ? 'bg-[var(--surface)] border border-olive-50' : 'text-[var(--subtle2)]'
                 }`}
               >
                 {format(day, 'd')}
@@ -211,7 +211,7 @@ export default function KalenderPage() {
             ))}
             {events.map((e) => (
               <Link key={e.id} href={`/kalender/${e.id}`}>
-              <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--olive)]/20 hover:border-[var(--olive)] transition-colors">
+              <div className="bg-[var(--surface)] rounded-xl p-3 border border-olive-20 hover:border-[var(--olive)] transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-xs text-[var(--olive)] font-semibold mb-0.5">📅 {e.event_type}</p>

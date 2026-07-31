@@ -157,6 +157,18 @@ h1, h2, h3 { letter-spacing: -0.025em; }
   padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+/* ── Tinted accents ─────────────────────────────────────────────────────────
+   Tailwind cannot apply an alpha to a var() colour: `border-[var(--sand)]/30`
+   compiles to NO rule at all, so those borders silently fell back to the default
+   grey and `bg-[var(--sand)]/10` highlights rendered as no fill whatsoever.
+   color-mix() does the same job and follows the theme.                          */
+.border-sand-30 { border-color: color-mix(in srgb, var(--sand) 30%, transparent); }
+.border-sand-50 { border-color: color-mix(in srgb, var(--sand) 50%, transparent); }
+.bg-sand-10 { background-color: color-mix(in srgb, var(--sand) 10%, transparent); }
+.bg-sand-20 { background-color: color-mix(in srgb, var(--sand) 20%, transparent); }
+.border-olive-20 { border-color: color-mix(in srgb, var(--olive) 20%, transparent); }
+.border-olive-50 { border-color: color-mix(in srgb, var(--olive) 50%, transparent); }
+
 /* ── Faded scroll edges ─────────────────────────────────────────────────────
    Inner scroll ports slice a card with a hard straight line at their boundary.
    A mask fades the content out at both edges instead, which also reads as "there
