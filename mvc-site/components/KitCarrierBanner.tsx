@@ -29,8 +29,8 @@ export default function KitCarrierBanner() {
   if (!name) return null
 
   return (
-    <div className="mx-4 mb-3">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-3 flex items-center gap-3">
+    <div className="mx-4 mb-[var(--v-gap)]">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-4 py-[var(--v-pad)] flex items-center gap-3">
         <span className="text-xl">🎽</span>
         <div>
           <p className="text-xs text-[var(--subtle)]">Truitjes</p>

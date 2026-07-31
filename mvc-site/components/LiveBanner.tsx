@@ -30,11 +30,11 @@ export default function LiveBanner() {
   const awayScore = match.manual_away_score ?? match.rbfa_away_score
 
   return (
-    <div className="mx-4 mb-4">
+    <div className="mx-4 mb-[var(--v-gap)]">
       <Link href={`/wedstrijden/${match.id}`}>
-        <div className="rounded-2xl p-4 border border-red-500/40" style={{ background: 'linear-gradient(135deg, rgba(127,0,0,0.3), var(--surface))' }}>
+        <div className="rounded-2xl p-[var(--v-pad)] border border-red-500/40" style={{ background: 'linear-gradient(135deg, rgba(127,0,0,0.3), var(--surface))' }}>
           {/* Live indicator */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-[var(--v-gap)]">
             <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
             <span className="text-xs text-red-400 font-bold uppercase tracking-widest">Live</span>
             <span className="text-xs text-red-400/60 ml-auto">{match.series_name}</span>
