@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import type { Match } from '@/lib/types'
+import { toBrussels } from '@/lib/utils'
 
 interface Props {
   match: Match
@@ -10,8 +11,7 @@ interface Props {
 }
 
 export default function MatchCard({ match, showLink = true, isNext = false }: Props) {
-  const rawDate = new Date(match.start_time)
-  const date = new Date(rawDate.getTime() + rawDate.getTimezoneOffset() * 60000)
+  const date = toBrussels(match.start_time)
   const homeScore = match.manual_home_score ?? match.rbfa_home_score
   const awayScore = match.manual_away_score ?? match.rbfa_away_score
   const hasScore = homeScore !== null && awayScore !== null
@@ -63,8 +63,10 @@ export default function MatchCard({ match, showLink = true, isNext = false }: Pr
         </span>
       </div>
 
-      {match.series_name && (
-        <p className="text-[10px] text-[var(--subtle2)] mt-1.5">{match.series_name}</p>
+      {(match.series_name || match.location_name) && (
+        <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+          {[match.series_name, match.location_name].filter(Boolean).join(' • ')}
+        </p>
       )}
     </div>
   )

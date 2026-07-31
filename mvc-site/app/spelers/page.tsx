@@ -2,22 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { seasonOf as getSeason, brusselsFormToUtcIso } from '@/lib/utils'
 import type { Player, PlayerStats, CornerDuo } from '@/lib/types'
 import { ChevronDown, RefreshCw } from 'lucide-react'
 
-function getSeason(dateStr: string): string {
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const startYear = month >= 7 ? year : year - 1
-  return `${startYear}-${startYear + 1}`
-}
-
+// A season runs 1 August 00:00 to 31 July 23:59 *Brussels time*.
 function seasonDateRange(season: string): { from: string; to: string } {
   const startYear = parseInt(season.split('-')[0])
   return {
-    from: `${startYear}-08-01T00:00:00+00:00`,
-    to: `${startYear + 1}-07-31T23:59:59+00:00`,
+    from: brusselsFormToUtcIso(`${startYear}-08-01`, '00:00')!,
+    to: brusselsFormToUtcIso(`${startYear + 1}-07-31`, '23:59')!,
   }
 }
 

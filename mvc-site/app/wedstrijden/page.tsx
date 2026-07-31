@@ -3,18 +3,10 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { seasonOf as getSeason } from '@/lib/utils'
 import type { Match } from '@/lib/types'
 import MatchCard from '@/components/MatchCard'
 import { RefreshCw, ChevronDown } from 'lucide-react'
-
-function getSeason(dateStr: string): string {
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = date.getMonth() // 0-indexed
-  // Season starts in August/September: Aug-Dec = year/year+1, Jan-Jul = year-1/year
-  const startYear = month >= 7 ? year : year - 1
-  return `${startYear}-${startYear + 1}`
-}
 
 export default function WedstrijdenPage() {
   const [allMatches, setAllMatches] = useState<Match[]>([])

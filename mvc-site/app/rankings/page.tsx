@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { seasonOf as getSeason } from '@/lib/utils'
 import type { Match } from '@/lib/types'
 
 interface Team { name: string; logo: string; position: number; points: number }
@@ -11,13 +12,6 @@ interface Series { name: string; serieId: string }
 interface OurStats { played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number; points: number; form: string[] }
 
 const OUR_TEAM = 'DERDE HELFT'
-
-function getSeason(dateStr: string): string {
-  const d = new Date(dateStr)
-  const year = d.getFullYear()
-  const startYear = d.getMonth() >= 7 ? year : year - 1
-  return `${startYear}-${startYear + 1}`
-}
 
 function computeStats(matches: Match[]): OurStats {
   const finished = matches.filter(m => m.rbfa_home_score !== null)

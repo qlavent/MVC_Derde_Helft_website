@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { nl } from 'date-fns/locale'
+import { formatBrussels } from '@/lib/utils'
 import ThemeToggle from '@/components/ThemeToggle'
 import LiveBanner from '@/components/LiveBanner'
 import UpcomingFeed from '@/components/UpcomingFeed'
@@ -67,8 +66,6 @@ export default async function HomePage() {
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none fade-edges space-y-[var(--v-gap)] pb-1">
           {recentMatches?.slice(0, 5).map((m) => {
-            const r = new Date(m.start_time)
-            const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
             const homeScore = m.manual_home_score ?? m.rbfa_home_score
             const awayScore = m.manual_away_score ?? m.rbfa_away_score
             const ourScore = m.is_home_game ? homeScore : awayScore
@@ -81,7 +78,7 @@ export default async function HomePage() {
                 <div className="bg-[var(--surface)] rounded-2xl p-[var(--v-pad)] border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
                   <div className="flex items-center justify-between mb-[var(--v-gap)]">
                     <span className="text-xs text-[var(--subtle)]">
-                      {format(d, 'EEEE d MMM yyyy', { locale: nl })}
+                      {formatBrussels(m.start_time, 'EEEE d MMM yyyy')}
                     </span>
                     {result && (
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${resultColor}`}>
@@ -106,8 +103,10 @@ export default async function HomePage() {
                       {m.away_team_name}
                     </span>
                   </div>
-                  {m.series_name && (
-                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5">{m.series_name}</p>
+                  {(m.series_name || m.location_name) && (
+                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+                      {[m.series_name, m.location_name].filter(Boolean).join(' • ')}
+                    </p>
                   )}
                 </div>
               </Link>

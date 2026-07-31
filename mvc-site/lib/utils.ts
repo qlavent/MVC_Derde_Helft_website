@@ -1,15 +1,16 @@
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
+import { brusselsWallClock, brusselsFormToUtcIso, seasonOf } from './time.mjs'
 
-// RBFA times are stored as Brussels local time but PostgreSQL treats them as UTC.
-// This means displayed times appear 2h ahead. Fix: use UTC methods for display.
-export function parseMatchDate(dateStr: string): Date {
-  // Parse as UTC to get the original Brussels time back
-  const d = new Date(dateStr)
-  // Shift back by browser's UTC offset so format() shows the UTC value
-  return new Date(d.getTime() + d.getTimezoneOffset() * 60000)
+export { brusselsFormToUtcIso, seasonOf }
+
+// Stored values are true UTC instants; everything on screen is Brussels time. Use these
+// for any timestamp on screen — never `new Date(value)` straight into format(), which
+// renders in the viewer's device timezone. See lib/time.mjs for the rules.
+export function toBrussels(value: string | Date): Date {
+  return brusselsWallClock(value)
 }
 
-export function formatMatchDate(dateStr: string, fmt: string): string {
-  return format(parseMatchDate(dateStr), fmt, { locale: nl })
+export function formatBrussels(value: string | Date, fmt: string): string {
+  return format(brusselsWallClock(value), fmt, { locale: nl })
 }

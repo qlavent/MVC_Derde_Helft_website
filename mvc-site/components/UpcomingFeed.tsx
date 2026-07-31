@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Match, CalendarEvent } from '@/lib/types'
 import Link from 'next/link'
+import { toBrussels } from '@/lib/utils'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 
@@ -34,8 +35,8 @@ export default function UpcomingFeed() {
   }
 
   const merged = [
-    ...matches.map((m) => { const r = new Date(m.start_time); const t = new Date(r.getTime() + r.getTimezoneOffset() * 60000); return { type: 'match' as const, time: t, data: m } }),
-    ...events.map((e) => ({ type: 'event' as const, time: new Date(e.start_time), data: e })),
+    ...matches.map((m) => ({ type: 'match' as const, time: toBrussels(m.start_time), data: m })),
+    ...events.map((e) => ({ type: 'event' as const, time: toBrussels(e.start_time), data: e })),
   ].sort((a, b) => a.time.getTime() - b.time.getTime())
 
   if (merged.length === 0) return null
@@ -54,8 +55,9 @@ export default function UpcomingFeed() {
                   <span className="text-base flex-shrink-0">⚽</span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{item.data.home_team_name} vs {item.data.away_team_name}</p>
-                    <p className="text-xs text-[var(--subtle)] mt-0.5">
+                    <p className="text-xs text-[var(--subtle)] mt-0.5 truncate">
                       {format(item.time, 'EEEE d MMM • HH:mm', { locale: nl })}
+                      {item.data.location_name && ` • ${item.data.location_name}`}
                     </p>
                   </div>
                 </div>

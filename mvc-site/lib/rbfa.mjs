@@ -9,6 +9,10 @@
 //     updates rows — it never deletes, and never overwrites a value we have with null.
 //     Our database is the archive; RBFA is just the feed.
 
+import { brusselsToUtc, seasonOf } from './time.mjs'
+
+export { seasonOf }
+
 const RBFA_API = 'https://datalake-prod2018.rbfa.be/graphql'
 
 export const CLUB_ID = '9143' // MVC DEN DERDE HELFT
@@ -27,25 +31,9 @@ export async function rbfaQuery(query) {
 
 // --- pure helpers (covered by scripts/check-rbfa.mjs) ---
 
-// Season label for a date: August through July, e.g. "2026-2027".
-export function seasonOf(dateStr) {
-  const d = new Date(dateStr)
-  const startYear = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1
-  return `${startYear}-${startYear + 1}`
-}
-
-// RBFA startTime has no zone ("2026-09-09T21:00:00") and means Brussels wall-clock time.
-// We keep storing it verbatim (the DB column then reads it as UTC, and lib/utils.ts
-// compensates on display), but any *time math* needs the real instant or the live
-// window lands 1-2h off.
-export function matchInstant(startTime) {
-  const naive = String(startTime).replace(/(Z|[+-]\d\d:?\d\d)$/, '')
-  const asIfUtc = new Date(`${naive}Z`)
-  const brusselsWall = new Date(
-    `${asIfUtc.toLocaleString('sv-SE', { timeZone: 'Europe/Brussels' }).replace(' ', 'T')}Z`
-  )
-  return new Date(asIfUtc.getTime() - (brusselsWall.getTime() - asIfUtc.getTime()))
-}
+// NOTE: brusselsToUtc() below is only ever handed a *raw RBFA* startTime, which has no
+// zone ("2026-09-09T21:00:00") and means Brussels wall-clock time. Never pass it a value
+// read back from our database — those are already UTC instants.
 
 // A planned match still comes back with outcome: { homeTeamGoals: null, awayTeamGoals: null },
 // so `outcome != null` is NOT a result — checking that marks every future fixture finished.
@@ -57,7 +45,7 @@ export function hasScore(m) {
 // because 'planned' sticks around long after a match has actually been played.
 export function deriveState(m, now = new Date()) {
   if (m.state === 'finished' || hasScore(m)) return 'finished'
-  const diffMs = now.getTime() - matchInstant(m.startTime).getTime()
+  const diffMs = now.getTime() - brusselsToUtc(m.startTime).getTime()
   if (diffMs > 3 * 3600000) return 'finished'
   if (diffMs > -600000) return 'live' // from 10 min before kickoff
   return 'upcoming'
@@ -65,7 +53,7 @@ export function deriveState(m, now = new Date()) {
 
 // A match is "in the live window" when its cards/score are still worth re-fetching.
 export function inLiveWindow(startTime, now = new Date()) {
-  const diffMs = now.getTime() - matchInstant(startTime).getTime()
+  const diffMs = now.getTime() - brusselsToUtc(startTime).getTime()
   return diffMs >= -3600000 && diffMs <= 4 * 3600000
 }
 
@@ -93,6 +81,7 @@ const calendarQuery = (teamId) => `
       awayTeam { id name }
       outcome { homeTeamGoals awayTeamGoals }
       series { id name }
+      location { name }
     }
   }
 `
@@ -212,19 +201,20 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
     const rows = incoming.map(({ teamId, m }) => {
       const prev = prevByRbfaId.get(m.id)
       const state = deriveState(m, now)
-      const kickoff = matchInstant(m.startTime)
+      const kickoff = brusselsToUtc(m.startTime)
       return {
         rbfa_id: m.id,
         home_team_name: m.homeTeam?.name ?? prev?.home_team_name ?? '?',
         away_team_name: m.awayTeam?.name ?? prev?.away_team_name ?? '?',
         home_team_rbfa_id: m.homeTeam?.id ?? prev?.home_team_rbfa_id ?? null,
         away_team_rbfa_id: m.awayTeam?.id ?? prev?.away_team_rbfa_id ?? null,
-        start_time: m.startTime ?? prev?.start_time,
+        start_time: m.startTime ? brusselsToUtc(m.startTime).toISOString() : prev?.start_time,
         // Never walk a played match back to upcoming, and never drop a score or a series
         // name that RBFA has stopped reporting. 'finished' only sticks for a match whose
         // kickoff has actually passed, so a wrong 'finished' on a future fixture heals.
         state: prev?.state === 'finished' && kickoff <= now ? 'finished' : state,
         series_name: m.series?.name ?? prev?.series_name ?? null,
+        location_name: m.location?.name ?? prev?.location_name ?? null,
         is_home_game: m.homeTeam?.id === teamId,
         rbfa_home_score: m.outcome?.homeTeamGoals ?? prev?.rbfa_home_score ?? null,
         rbfa_away_score: m.outcome?.awayTeamGoals ?? prev?.rbfa_away_score ?? null,

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         end: new Date(new Date(match.start_time).getTime() + 90 * 60 * 1000),
         summary: `${match.home_team_name} vs ${match.away_team_name}`,
         description: match.series_name ?? 'Minivoetbal kern Deinze',
-        location: 'Kern Deinze',
+        location: match.location_name ?? 'Kern Deinze',
       })
     }
   } else if (eventId) {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         end: new Date(new Date(m.start_time).getTime() + 90 * 60 * 1000),
         summary: `⚽ ${m.home_team_name} vs ${m.away_team_name}`,
         description: m.series_name ?? 'Minivoetbal kern Deinze',
-        location: 'Kern Deinze',
+        location: m.location_name ?? 'Kern Deinze',
       })
     }
 

@@ -10,6 +10,7 @@ export interface Match {
   start_time: string
   state: MatchState
   series_name: string | null
+  location_name: string | null
   is_home_game: boolean
   rbfa_home_score: number | null
   rbfa_away_score: number | null
