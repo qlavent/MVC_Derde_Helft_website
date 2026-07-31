@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import type { Match, CalendarEvent } from '@/lib/types'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
@@ -10,50 +9,13 @@ import KitCarrierBanner from '@/components/KitCarrierBanner'
 
 export const revalidate = 30
 
-async function getRbfaMatches(): Promise<Match[]> {
-  try {
-    const res = await fetch('https://datalake-prod2018.rbfa.be/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `query { teamCalendar(teamId: "345149", language: nl, sortByDate: asc) { id state startTime homeTeam { id name } awayTeam { id name } outcome { homeTeamGoals awayTeamGoals } series { id name } } }` }),
-      next: { revalidate: 300 },
-    })
-    const json = await res.json()
-    return (json.data?.teamCalendar ?? []).map((m: { id: string; state: string; startTime: string; homeTeam: { id: string; name: string }; awayTeam: { id: string; name: string }; outcome?: { homeTeamGoals: number; awayTeamGoals: number } | null; series?: { name: string } | null }) => ({
-      id: m.id, rbfa_id: m.id,
-      home_team_name: m.homeTeam.name, away_team_name: m.awayTeam.name,
-      home_team_rbfa_id: m.homeTeam.id, away_team_rbfa_id: m.awayTeam.id,
-      start_time: m.startTime,
-      state: (() => {
-        if (m.state === 'finished' || m.outcome != null) return 'finished'
-        const start = new Date(m.startTime)
-        const now = new Date()
-        const diffMs = now.getTime() - start.getTime()
-        if (diffMs > 3600000) return 'finished'
-        if (diffMs > 0) return 'live'
-        return 'upcoming'
-      })(),
-      series_name: m.series?.name ?? 'Kern Deinze', is_home_game: m.homeTeam.id === '345149',
-      rbfa_home_score: m.outcome?.homeTeamGoals ?? null, rbfa_away_score: m.outcome?.awayTeamGoals ?? null,
-      manual_home_score: null, manual_away_score: null, instagram_post_url: null, synced_at: new Date().toISOString(),
-    }))
-  } catch {
-    return []
-  }
-}
-
 async function getData() {
-  const [{ data: recentMatches }] = await Promise.all([
-    supabase.from('matches').select('*').eq('state', 'finished').order('start_time', { ascending: false }).limit(5),
-  ])
-
-  const hasSupabaseData = (recentMatches?.length ?? 0) > 0
-  if (!hasSupabaseData) {
-    const rbfa = await getRbfaMatches()
-    return {
-      recentMatches: rbfa.filter((m) => m.state === 'finished').reverse().slice(0, 5),
-    }
-  }
+  const { data: recentMatches } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('state', 'finished')
+    .order('start_time', { ascending: false })
+    .limit(5)
 
   return { recentMatches }
 }

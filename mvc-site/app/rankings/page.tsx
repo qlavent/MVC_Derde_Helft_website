@@ -57,8 +57,6 @@ export default function RankingsPage() {
   const [rbfaLoading, setRbfaLoading] = useState(true)
   const [rbfaError, setRbfaError] = useState<string | null>(null)
 
-  const isCurrentSeason = selectedSeason === currentSeason
-
   // Load seasons + local stats from Supabase
   useEffect(() => {
     supabase.from('matches').select('*').order('start_time').then(({ data }) => {
@@ -81,59 +79,41 @@ export default function RankingsPage() {
       })
   }, [selectedSeason])
 
-  // Load standings: RBFA for current season, Supabase snapshot for historical
+  // Standings come from rankings_snapshots for every season, current one included: the
+  // sync keeps them fresh and RBFA stops serving a season's table once it rolls over.
   useEffect(() => {
     setRbfaLoading(true)
     setRbfaError(null)
-
-    if (isCurrentSeason) {
-      fetch('/api/rbfa-rankings')
-        .then(r => r.json())
-        .then(d => {
-          if (d.error) throw new Error(d.error)
-          setSeries(d.series ?? [])
-          const byS: Team[][] = (d.rankings ?? []).map((r: { rankings: { teams: Team[] }[] }) =>
-            r.rankings?.[0]?.teams ?? []
-          )
-          setRankingsBySeries(byS)
-          const reeksIdx = (d.series ?? []).findIndex((s: Series) => s.name.toLowerCase().includes('reeks'))
-          setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
-        })
-        .catch(e => setRbfaError(e.message))
-        .finally(() => setRbfaLoading(false))
-    } else {
-      // Read snapshot from Supabase
-      ;(async () => {
-        try {
-          const { data, error } = await supabase
-            .from('rankings_snapshots')
-            .select('*')
-            .eq('season', selectedSeason)
-            .order('position')
-          if (error) throw new Error(error.message)
-          const rows = data ?? []
-          const serieMap = new Map<string, { name: string; serieId: string; teams: Team[] }>()
-          for (const r of rows) {
-            if (!serieMap.has(r.serie_id)) {
-              serieMap.set(r.serie_id, { name: r.serie_name, serieId: r.serie_id, teams: [] })
-            }
-            serieMap.get(r.serie_id)!.teams.push({
-              name: r.team_name, logo: r.team_logo ?? '', position: r.position, points: r.points,
-            })
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rankings_snapshots')
+          .select('*')
+          .eq('season', selectedSeason)
+          .order('position')
+        if (error) throw new Error(error.message)
+        const rows = data ?? []
+        const serieMap = new Map<string, { name: string; serieId: string; teams: Team[] }>()
+        for (const r of rows) {
+          if (!serieMap.has(r.serie_id)) {
+            serieMap.set(r.serie_id, { name: r.serie_name, serieId: r.serie_id, teams: [] })
           }
-          const serieList = Array.from(serieMap.values())
-          setSeries(serieList.map(s => ({ name: s.name, serieId: s.serieId })))
-          setRankingsBySeries(serieList.map(s => s.teams))
-          const reeksIdx = serieList.findIndex(s => s.name.toLowerCase().includes('reeks'))
-          setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
-        } catch (e) {
-          setRbfaError(e instanceof Error ? e.message : String(e))
-        } finally {
-          setRbfaLoading(false)
+          serieMap.get(r.serie_id)!.teams.push({
+            name: r.team_name, logo: r.team_logo ?? '', position: r.position, points: r.points,
+          })
         }
-      })()
-    }
-  }, [selectedSeason, isCurrentSeason])
+        const serieList = Array.from(serieMap.values())
+        setSeries(serieList.map(s => ({ name: s.name, serieId: s.serieId })))
+        setRankingsBySeries(serieList.map(s => s.teams))
+        const reeksIdx = serieList.findIndex(s => s.name.toLowerCase().includes('reeks'))
+        setActiveIdx(reeksIdx >= 0 ? reeksIdx : 0)
+      } catch (e) {
+        setRbfaError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setRbfaLoading(false)
+      }
+    })()
+  }, [selectedSeason])
 
   const currentTeams = rankingsBySeries[activeIdx] ?? []
   const formColors: Record<string, string> = {
