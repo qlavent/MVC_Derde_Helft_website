@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { toBrussels, brusselsFormToUtcIso } from '@/lib/utils'
 import type { CalendarEvent } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
@@ -57,8 +58,9 @@ export default function EventDetailPage() {
     const { data } = await supabase.from('calendar_events').select('*').eq('id', id).single()
     setEvent(data)
     if (data) {
-      const start = new Date(data.start_time)
-      const end = data.end_time ? new Date(data.end_time) : null
+      // Form fields show and accept Brussels wall-clock time.
+      const start = toBrussels(data.start_time)
+      const end = data.end_time ? toBrussels(data.end_time) : null
       setForm({
         title: data.title,
         start_date: format(start, 'yyyy-MM-dd'),
@@ -75,8 +77,8 @@ export default function EventDetailPage() {
 
   async function saveEvent() {
     if (!form.title || !form.start_date) return
-    const startTime = new Date(form.start_date + (form.start_time ? `T${form.start_time}:00` : 'T00:00:00')).toISOString()
-    const endTime = form.end_date ? new Date(form.end_date + (form.end_time ? `T${form.end_time}:00` : 'T00:00:00')).toISOString() : null
+    const startTime = brusselsFormToUtcIso(form.start_date, form.start_time)
+    const endTime = form.end_date ? brusselsFormToUtcIso(form.end_date, form.end_time) : null
     await supabase.from('calendar_events').update({
       title: form.title,
       start_time: startTime,
@@ -107,8 +109,8 @@ export default function EventDetailPage() {
     </div>
   )
 
-  const startDate = new Date(event.start_time)
-  const endDate = event.end_time ? new Date(event.end_time) : null
+  const startDate = toBrussels(event.start_time)
+  const endDate = event.end_time ? toBrussels(event.end_time) : null
 
   return (
     <div className="min-h-screen">

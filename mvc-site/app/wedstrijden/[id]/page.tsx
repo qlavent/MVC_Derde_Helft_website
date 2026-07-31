@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { toBrussels } from '@/lib/utils'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
@@ -195,13 +196,10 @@ export default function MatchDetailPage() {
 
   const playerName = (p?: Player | null) => (p ? `${p.first_name} ${p.last_name}` : '—')
 
-  // Timezone fix: RBFA stores Belgian local time without tz info, so shift it
-  const matchDate = (() => {
-    const r = new Date(match.start_time)
-    return new Date(r.getTime() + r.getTimezoneOffset() * 60000)
-  })()
-  // Use corrected ts for both sorting and "has started" check — consistent with display
-  const matchStartTs = matchDate.getTime()
+  // start_time is a true UTC instant: compare against it directly, and shift to Brussels
+  // only for display.
+  const matchStartTs = new Date(match.start_time).getTime()
+  const matchDate = toBrussels(match.start_time)
 
   // Build unified timeline, newest at top
   type TlItem =

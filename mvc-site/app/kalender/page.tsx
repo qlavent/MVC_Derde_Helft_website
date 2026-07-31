@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { CalendarEvent, Match } from '@/lib/types'
+import { toBrussels, formatBrussels, brusselsFormToUtcIso } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Copy, Check } from 'lucide-react'
@@ -62,8 +63,9 @@ export default function KalenderPage() {
 
   async function addEvent() {
     if (!form.title || !form.start_date) return
-    const startTime = new Date(form.start_date + (form.start_time ? `T${form.start_time}:00` : 'T00:00:00')).toISOString()
-    const endTime = form.end_date ? new Date(form.end_date + (form.end_time ? `T${form.end_time}:00` : 'T00:00:00')).toISOString() : null
+    // Form input is Brussels wall-clock time, whatever timezone the device is in.
+    const startTime = brusselsFormToUtcIso(form.start_date, form.start_time)
+    const endTime = form.end_date ? brusselsFormToUtcIso(form.end_date, form.end_time) : null
     await supabase.from('calendar_events').insert({
       title: form.title,
       start_time: startTime,
@@ -88,8 +90,8 @@ export default function KalenderPage() {
   const firstDayOffset = (startOfMonth(currentMonth).getDay() + 6) % 7
 
   function getItemsForDay(date: Date) {
-    const matchesOnDay = matches.filter((m) => { const r = new Date(m.start_time); return isSameDay(new Date(r.getTime() + r.getTimezoneOffset() * 60000), date) })
-    const eventsOnDay = events.filter((e) => isSameDay(new Date(e.start_time), date))
+    const matchesOnDay = matches.filter((m) => isSameDay(toBrussels(m.start_time), date))
+    const eventsOnDay = events.filter((e) => isSameDay(toBrussels(e.start_time), date))
     return { matchesOnDay, eventsOnDay }
   }
 
@@ -192,7 +194,7 @@ export default function KalenderPage() {
                   <div className="flex-1">
                     <p className="text-xs text-[var(--sand)] font-semibold mb-0.5">⚽ Wedstrijd</p>
                     <p className="text-sm font-semibold">{m.home_team_name} vs {m.away_team_name}</p>
-                    <p className="text-xs text-[var(--subtle)]">{format((() => { const r = new Date(m.start_time); return new Date(r.getTime() + r.getTimezoneOffset() * 60000) })(), 'EEEE d MMM • HH:mm', { locale: nl })}</p>
+                    <p className="text-xs text-[var(--subtle)]">{formatBrussels(m.start_time, 'EEEE d MMM • HH:mm')}</p>
                   </div>
                   <a
                     href={`/api/calendar.ics?match=${m.id}`}
@@ -211,8 +213,8 @@ export default function KalenderPage() {
                   <div className="flex-1">
                     <p className="text-xs text-[var(--olive)] font-semibold mb-0.5">📅 {e.event_type}</p>
                     <p className="text-sm font-semibold">{e.title}</p>
-                    <p className="text-xs text-[var(--subtle)]">{format(new Date(e.start_time), 'EEEE d MMM • HH:mm', { locale: nl })}</p>
-                    {e.end_time && <p className="text-xs text-[var(--subtle)]">tot {format(new Date(e.end_time), 'HH:mm', { locale: nl })}</p>}
+                    <p className="text-xs text-[var(--subtle)]">{formatBrussels(e.start_time, 'EEEE d MMM • HH:mm')}</p>
+                    {e.end_time && <p className="text-xs text-[var(--subtle)]">tot {formatBrussels(e.end_time, 'HH:mm')}</p>}
                     {e.location && <p className="text-xs text-[var(--subtle2)]">📍 {e.location}</p>}
                     {e.description && <p className="text-xs text-[var(--subtle2)] mt-1 line-clamp-2">{e.description}</p>}
                   </div>
