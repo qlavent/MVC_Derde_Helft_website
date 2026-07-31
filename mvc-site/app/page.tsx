@@ -25,8 +25,15 @@ export default async function HomePage() {
   const { recentMatches } = await getData()
 
   return (
-    <div className="h-[100dvh] flex flex-col overflow-hidden">
-      {/* Fixed top section */}
+    // Locked to the viewport and taken out of <main>'s flow, so the global .pb-safe
+    // padding (which scrolling pages need to clear the dock) can't add phantom scroll
+    // here. This screen clears the dock itself, via pb-24 on the pinned block below.
+    // overflow-y-auto, not hidden: on a normal phone everything fits and nothing scrolls
+    // here, but on a very short viewport (landscape, small devices) the header + both list
+    // floors + the button row exceed 100dvh — scrolling degrades gracefully, clipping the
+    // buttons off-screen does not.
+    <div className="fixed inset-x-0 top-0 mx-auto max-w-lg h-[100dvh] flex flex-col overflow-y-auto overscroll-contain scrollbar-none">
+      {/* Pinned: header and the two conditional banners */}
       <div className="flex-shrink-0">
         {/* Header */}
         <div className="px-4 pt-12 pb-4">
@@ -46,19 +53,19 @@ export default async function HomePage() {
 
         <KitCarrierBanner />
         <LiveBanner />
-        <UpcomingFeed />
+      </div>
 
-        {(recentMatches?.length ?? 0) > 0 && (
-          <div className="px-4 pt-1 pb-2 flex items-center justify-between">
+      {/* Aankomend — sizes to content, scrolls inside when it does not fit */}
+      <UpcomingFeed />
+
+      {/* Uitslagen — same deal: heading stays put, the list scrolls under it */}
+      {(recentMatches?.length ?? 0) > 0 && (
+        <section className="flex-auto min-h-[92px] flex flex-col px-4">
+          <div className="flex-shrink-0 pb-2 flex items-center justify-between">
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-        )}
-      </div>
-
-      {/* Scrollable results */}
-      {(recentMatches?.length ?? 0) > 0 && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-3 pb-3 scrollbar-none">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none space-y-3 pb-1">
           {recentMatches?.slice(0, 5).map((m) => {
             const r = new Date(m.start_time)
             const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
@@ -106,11 +113,12 @@ export default async function HomePage() {
               </Link>
             )
           })}
-        </div>
+          </div>
+        </section>
       )}
 
-      {/* Fixed bottom: quick links — always visible above dock */}
-      <div className="flex-shrink-0 px-4 pt-2 pb-28">
+      {/* Pinned bottom: quick links — always visible, clears the dock */}
+      <div className="flex-shrink-0 px-4 pt-2 pb-24">
         <div className="flex gap-3">
           <a href="https://www.instagram.com/mvc.den.derde.helft" target="_blank" rel="noopener noreferrer" className="flex-1">
             <div className="rounded-2xl p-4 flex items-center justify-center gap-2 font-bold text-sm text-white" style={{ background: 'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)' }}>
