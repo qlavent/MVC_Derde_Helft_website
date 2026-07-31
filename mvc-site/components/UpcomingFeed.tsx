@@ -43,12 +43,12 @@ export default function UpcomingFeed() {
   return (
     // flex-auto + a min-height floor: sizes to its content, gives up room to the results
     // list only when the viewport runs out, and never collapses out of sight.
-    <section className="flex-auto min-h-[92px] flex flex-col px-4 pb-4">
-      <h2 className="flex-shrink-0 text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-2">Aankomend</h2>
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none space-y-2 pb-1">
+    <section className="flex-auto min-h-[var(--v-list-floor)] flex flex-col px-4 pb-[var(--v-gap)]">
+      <h2 className="flex-shrink-0 text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest mb-[var(--v-gap)]">Aankomend</h2>
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none space-y-[var(--v-gap)] pb-1">
         {merged.map((item) => item.type === 'match' ? (
           <Link key={`m-${item.data.id}`} href={`/wedstrijden/${item.data.id}`}>
-            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
+            <div className="bg-[var(--surface)] rounded-xl p-[var(--v-pad)] border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-base flex-shrink-0">⚽</span>
@@ -64,7 +64,7 @@ export default function UpcomingFeed() {
           </Link>
         ) : (
           <Link key={`e-${item.data.id}`} href={`/kalender/${item.data.id}`}>
-            <div className="bg-[var(--surface)] rounded-xl p-3 border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
+            <div className="bg-[var(--surface)] rounded-xl p-[var(--v-pad)] border border-[var(--border)] hover:border-[var(--olive)] transition-colors">
               <div className="flex items-center gap-2">
                 <span className="text-base flex-shrink-0">
                   {eventTypeIcon[item.data.event_type] ?? '📅'}

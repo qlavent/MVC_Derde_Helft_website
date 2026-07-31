@@ -157,6 +157,29 @@ h1, h2, h3 { letter-spacing: -0.025em; }
   padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+/* ── Height-fluid chrome ────────────────────────────────────────────────────
+   The home screen is locked to the viewport, so its vertical chrome scales with
+   window height: on a short window the header, gaps and card padding give way so
+   the two lists keep usable room. Continuous via clamp(), so there are no jumps
+   as the window is dragged.
+
+   Font sizes deliberately do NOT scale — readability shouldn't depend on window
+   height, and shrinking text fights browser zoom and accessibility settings.
+
+   --v-dock-clear must stay at or above the dock's own height plus its bottom
+   offset (BottomNav: ~67px tall, bottom-5), or the floating dock covers the
+   buttons it is supposed to sit below. 6rem is that floor.                    */
+:root {
+  --v-top: clamp(1rem, 5.5dvh, 3rem);          /* header top pad: 48px → 16px */
+  --v-logo: clamp(2.25rem, 6dvh, 3rem);        /* logo: 48px → 36px */
+  --v-gap: clamp(0.375rem, 1.2dvh, 0.75rem);   /* between cards: 12px → 6px */
+  --v-pad: clamp(0.5rem, 1.6dvh, 1rem);        /* card inner pad: 16px → 8px */
+  --v-dock-clear: clamp(6rem, 12dvh, 7rem);    /* clears the floating dock */
+  /* Floor is heading + one whole card (~56px when compressed): a list should never
+     degrade into a sliver of a partial card. Below ~430dvh the root scrolls instead. */
+  --v-list-floor: clamp(5.5rem, 11dvh, 6rem);
+}
+
 /* ── Inputs ─────────────────────────────────────────────────────────────── */
 input, textarea, select {
   color: var(--fg);
