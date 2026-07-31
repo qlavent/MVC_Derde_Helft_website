@@ -157,6 +157,35 @@ h1, h2, h3 { letter-spacing: -0.025em; }
   padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+/* ── Faded scroll edges ─────────────────────────────────────────────────────
+   Inner scroll ports slice a card with a hard straight line at their boundary.
+   A mask fades the content out at both edges instead, which also reads as "there
+   is more here".
+
+   This has to be a mask, not the classic background-attachment: local scroll
+   shadow — that paints behind the content, and these cards are opaque and full
+   width, so it would never be visible.
+
+   The ramp is kept short and starts at 55% opacity rather than 0, so when a list
+   is short enough not to scroll the first and last card are barely touched.     */
+.fade-edges {
+  --fade: 1.25rem;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0,
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
 /* ── Height-fluid chrome ────────────────────────────────────────────────────
    The home screen is locked to the viewport, so its vertical chrome scales with
    window height: on a short window the header, gaps and card padding give way so

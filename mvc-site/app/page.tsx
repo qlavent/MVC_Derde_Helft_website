@@ -65,7 +65,7 @@ export default async function HomePage() {
             <h2 className="text-xs font-semibold text-[var(--subtle)] uppercase tracking-widest">Uitslagen</h2>
             <Link href="/wedstrijden" className="text-xs text-[var(--sand)]">Alle →</Link>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none space-y-[var(--v-gap)] pb-1">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none fade-edges space-y-[var(--v-gap)] pb-1">
           {recentMatches?.slice(0, 5).map((m) => {
             const r = new Date(m.start_time)
             const d = new Date(r.getTime() + r.getTimezoneOffset() * 60000)
