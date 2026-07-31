@@ -42,19 +42,7 @@ export default function WedstrijdenPage() {
     setLoading(true)
 
     const { data } = await supabase.from('matches').select('*').order('start_time', { ascending: true })
-
-    let matches: Match[] = []
-    if (data && data.length > 0) {
-      matches = data
-    } else {
-      try {
-        const res = await fetch('/api/rbfa-matches')
-        const rbfaData = await res.json()
-        matches = Array.isArray(rbfaData) ? rbfaData : []
-      } catch {
-        matches = []
-      }
-    }
+    const matches: Match[] = data ?? []
 
     setAllMatches(matches)
 
@@ -63,15 +51,18 @@ export default function WedstrijdenPage() {
     const sortedSeasons = Array.from(seasonSet).sort().reverse()
     setSeasons(sortedSeasons)
 
-    // Default to current season
-    const now = new Date()
-    const currentSeason = getSeason(now.toISOString())
-    const activeSeason = sortedSeasons.includes(currentSeason) ? currentSeason : sortedSeasons[0]
-    setSelectedSeason(activeSeason)
-
     // Find next upcoming match
     const next = matches.find((m) => m.state === 'upcoming' || m.state === 'live')
     setNextMatchId(next?.id ?? null)
+
+    // Default to the season of the next match, so the summer break shows the new
+    // fixture list instead of an empty tab. Falls back to the most recent season.
+    const currentSeason = getSeason(new Date().toISOString())
+    setSelectedSeason(
+      next ? getSeason(next.start_time)
+        : sortedSeasons.includes(currentSeason) ? currentSeason
+        : sortedSeasons[0]
+    )
 
     setLoading(false)
   }
