@@ -81,6 +81,7 @@ const calendarQuery = (teamId) => `
       awayTeam { id name }
       outcome { homeTeamGoals awayTeamGoals }
       series { id name }
+      location { name }
     }
   }
 `
@@ -213,6 +214,7 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
         // kickoff has actually passed, so a wrong 'finished' on a future fixture heals.
         state: prev?.state === 'finished' && kickoff <= now ? 'finished' : state,
         series_name: m.series?.name ?? prev?.series_name ?? null,
+        location_name: m.location?.name ?? prev?.location_name ?? null,
         is_home_game: m.homeTeam?.id === teamId,
         rbfa_home_score: m.outcome?.homeTeamGoals ?? prev?.rbfa_home_score ?? null,
         rbfa_away_score: m.outcome?.awayTeamGoals ?? prev?.rbfa_away_score ?? null,

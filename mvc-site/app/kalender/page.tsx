@@ -194,7 +194,10 @@ export default function KalenderPage() {
                   <div className="flex-1">
                     <p className="text-xs text-[var(--sand)] font-semibold mb-0.5">⚽ Wedstrijd</p>
                     <p className="text-sm font-semibold">{m.home_team_name} vs {m.away_team_name}</p>
-                    <p className="text-xs text-[var(--subtle)]">{formatBrussels(m.start_time, 'EEEE d MMM • HH:mm')}</p>
+                    <p className="text-xs text-[var(--subtle)]">
+                      {formatBrussels(m.start_time, 'EEEE d MMM • HH:mm')}
+                      {m.location_name && ` • ${m.location_name}`}
+                    </p>
                   </div>
                   <a
                     href={`/api/calendar.ics?match=${m.id}`}

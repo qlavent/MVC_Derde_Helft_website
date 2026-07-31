@@ -63,8 +63,10 @@ export default function MatchCard({ match, showLink = true, isNext = false }: Pr
         </span>
       </div>
 
-      {match.series_name && (
-        <p className="text-[10px] text-[var(--subtle2)] mt-1.5">{match.series_name}</p>
+      {(match.series_name || match.location_name) && (
+        <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+          {[match.series_name, match.location_name].filter(Boolean).join(' • ')}
+        </p>
       )}
     </div>
   )

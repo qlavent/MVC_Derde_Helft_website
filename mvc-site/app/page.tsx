@@ -103,8 +103,10 @@ export default async function HomePage() {
                       {m.away_team_name}
                     </span>
                   </div>
-                  {m.series_name && (
-                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5">{m.series_name}</p>
+                  {(m.series_name || m.location_name) && (
+                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+                      {[m.series_name, m.location_name].filter(Boolean).join(' • ')}
+                    </p>
                   )}
                 </div>
               </Link>

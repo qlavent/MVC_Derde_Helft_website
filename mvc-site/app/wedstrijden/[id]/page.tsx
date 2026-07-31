@@ -7,7 +7,7 @@ import { toBrussels } from '@/lib/utils'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2 } from 'lucide-react'
+import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2, MapPin } from 'lucide-react'
 import Link from 'next/link'
 
 type Tab = 'live' | 'info'
@@ -254,6 +254,11 @@ export default function MatchDetailPage() {
         <p className="text-xs text-[var(--subtle)] mb-2 text-center">
           {match.series_name} • {format(matchDate, 'EEEE d MMM yyyy • HH:mm', { locale: nl })}
         </p>
+        {match.location_name && (
+          <p className="text-xs text-[var(--subtle2)] mb-2 text-center flex items-center justify-center gap-1">
+            <MapPin size={11} /> {match.location_name}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm font-bold flex-1 ${match.is_home_game ? 'text-[var(--sand)]' : 'text-[var(--fg)]'}`}>
             {match.home_team_name}

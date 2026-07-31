@@ -55,8 +55,9 @@ export default function UpcomingFeed() {
                   <span className="text-base flex-shrink-0">⚽</span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{item.data.home_team_name} vs {item.data.away_team_name}</p>
-                    <p className="text-xs text-[var(--subtle)] mt-0.5">
+                    <p className="text-xs text-[var(--subtle)] mt-0.5 truncate">
                       {format(item.time, 'EEEE d MMM • HH:mm', { locale: nl })}
+                      {item.data.location_name && ` • ${item.data.location_name}`}
                     </p>
                   </div>
                 </div>
