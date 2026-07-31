@@ -76,25 +76,30 @@ export default function WedstrijdenPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="px-4 pt-12 pb-3 flex items-center justify-between">
+      <div className="px-4 pt-12 pb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full overflow-hidden border flex-shrink-0" style={{ borderColor: 'var(--sand)' }}>
             <img src="/logo.jpg" alt="logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-xl font-black">Wedstrijden</h1>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Stacked, and equal width so the pills line up. Standen is the primary action
+            here (it goes somewhere), so it gets the solid treatment; Sync stays secondary. */}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <Link
+            href="/rankings"
+            className="flex items-center justify-center gap-1 min-w-[112px] text-xs font-semibold bg-[var(--sand)] text-[var(--sand-fg)] rounded-full px-3 py-1.5 active:opacity-80"
+          >
+            🏆 Standen
+          </Link>
           <button
             onClick={syncRbfa}
             disabled={syncing}
-            className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 active:opacity-70 disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 min-w-[112px] text-xs text-[var(--sand)] border border-sand-50 rounded-full px-3 py-1.5 active:opacity-70 disabled:opacity-50"
           >
             <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
             {syncing ? 'Syncing...' : 'Sync RBFA'}
           </button>
-          <Link href="/rankings" className="flex items-center gap-1 text-xs text-[var(--subtle)] border border-[var(--border)] rounded-full px-3 py-1.5">
-            🏆 Standen
-          </Link>
         </div>
       </div>
 

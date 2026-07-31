@@ -221,7 +221,7 @@ export default function SpelersPage() {
         <button
           onClick={syncPlayers}
           disabled={syncing}
-          className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-3 py-1.5 disabled:opacity-50"
+          className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-sand-30 rounded-full px-3 py-1.5 disabled:opacity-50"
         >
           <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
           {syncing ? 'Syncing...' : 'Sync RBFA'}
@@ -342,7 +342,7 @@ export default function SpelersPage() {
           <div className="text-center text-[var(--subtle2)] py-12">
             <p className="text-3xl mb-2">👥</p>
             <p className="mb-3">Nog geen spelers geladen</p>
-            <button onClick={syncPlayers} className="text-xs text-[var(--sand)] border border-[var(--sand)]/30 rounded-full px-4 py-2">
+            <button onClick={syncPlayers} className="text-xs text-[var(--sand)] border border-sand-30 rounded-full px-4 py-2">
               Sync RBFA om spelers te laden
             </button>
           </div>
@@ -421,7 +421,7 @@ export default function SpelersPage() {
               <button
                 key={s.player.id}
                 onClick={() => setSelectedPlayer(s)}
-                className={`w-full flex flex-col items-center gap-1 py-2 px-1 transition-colors ${selectedPlayer.player.id === s.player.id ? 'bg-[var(--sand)]/20' : ''}`}
+                className={`w-full flex flex-col items-center gap-1 py-2 px-1 transition-colors ${selectedPlayer.player.id === s.player.id ? 'bg-sand-20' : ''}`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${selectedPlayer.player.id === s.player.id ? 'bg-[var(--sand)] text-[var(--sand-fg)]' : 'bg-[var(--muted)] text-[var(--fg)]'}`}>
                   {s.player.first_name[0]}{s.player.last_name[0]}

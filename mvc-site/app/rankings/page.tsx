@@ -143,7 +143,7 @@ export default function RankingsPage() {
 
       {/* Our stats — from local Supabase data (works for all seasons) */}
       {localStats && localStats.played > 0 && (
-        <div className="mx-4 mb-4 bg-[var(--surface)] rounded-2xl p-4 border border-[var(--sand)]/30">
+        <div className="mx-4 mb-4 bg-[var(--surface)] rounded-2xl p-4 border border-sand-30">
           <p className="text-xs text-[var(--subtle)] mb-2">MVC Den Derde Helft — {selectedSeason}</p>
           <div className="flex gap-3 mb-3">
             {[
@@ -200,7 +200,7 @@ export default function RankingsPage() {
                 {currentTeams.map((team, i) => {
                   const isUs = team.name.toUpperCase().includes(OUR_TEAM)
                   return (
-                    <div key={i} className={`flex items-center px-4 py-3 border-b border-[var(--border)] last:border-0 ${isUs ? 'bg-[var(--sand)]/10' : ''}`}>
+                    <div key={i} className={`flex items-center px-4 py-3 border-b border-[var(--border)] last:border-0 ${isUs ? 'bg-sand-10' : ''}`}>
                       <span className={`w-6 text-sm font-bold ${isUs ? 'text-[var(--sand)]' : 'text-[var(--subtle)]'}`}>{team.position}</span>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         {team.logo && !team.logo.includes('no_logo') && (
