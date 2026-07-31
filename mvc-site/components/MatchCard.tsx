@@ -8,16 +8,20 @@ interface Props {
   match: Match
   showLink?: boolean
   isNext?: boolean
+  /** Fluid padding that shrinks with viewport height. For the height-locked home screen;
+   *  the scrolling lists keep fixed padding. */
+  compact?: boolean
 }
 
-export default function MatchCard({ match, showLink = true, isNext = false }: Props) {
+export default function MatchCard({ match, showLink = true, isNext = false, compact = false }: Props) {
   const date = toBrussels(match.start_time)
   const homeScore = match.manual_home_score ?? match.rbfa_home_score
   const awayScore = match.manual_away_score ?? match.rbfa_away_score
   const hasScore = homeScore !== null && awayScore !== null
 
   const card = (
-    <div className={`bg-[var(--surface)] rounded-2xl p-4 border transition-colors
+    <div className={`bg-[var(--surface)] rounded-2xl border transition-colors
+      ${compact ? 'p-[var(--v-pad)]' : 'p-4'}
       ${isNext ? 'border-[var(--sand)]' : 'border-[var(--border)]'}
       ${showLink ? 'cursor-pointer hover:border-[var(--sand)]' : ''}
     `}>
@@ -43,8 +47,8 @@ export default function MatchCard({ match, showLink = true, isNext = false }: Pr
       </div>
 
       {/* Teams + score */}
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-sm font-semibold flex-1 truncate ${match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+      <div className="flex items-start justify-between gap-2">
+        <span className={`text-sm font-semibold flex-1 min-w-0 break-words leading-tight ${match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
           {match.home_team_name}
         </span>
 
@@ -58,13 +62,13 @@ export default function MatchCard({ match, showLink = true, isNext = false }: Pr
           <div className="w-12 flex-shrink-0" />
         )}
 
-        <span className={`text-sm font-semibold flex-1 text-right truncate ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+        <span className={`text-sm font-semibold flex-1 min-w-0 text-right break-words leading-tight ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
           {match.away_team_name}
         </span>
       </div>
 
       {(match.series_name || match.location_name) && (
-        <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+        <p className="text-[10px] text-[var(--subtle2)] mt-1.5 break-words leading-snug">
           {[match.series_name, match.location_name].filter(Boolean).join(' • ')}
         </p>
       )}

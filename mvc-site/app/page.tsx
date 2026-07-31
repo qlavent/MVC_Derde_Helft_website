@@ -86,8 +86,8 @@ export default async function HomePage() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm font-semibold flex-1 truncate ${m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={`text-sm font-semibold flex-1 min-w-0 break-words leading-tight ${m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
                       {m.home_team_name}
                     </span>
                     {hasScore ? (
@@ -99,12 +99,12 @@ export default async function HomePage() {
                     ) : (
                       <div className="w-12 flex-shrink-0" />
                     )}
-                    <span className={`text-sm font-semibold flex-1 text-right truncate ${!m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+                    <span className={`text-sm font-semibold flex-1 min-w-0 text-right break-words leading-tight ${!m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
                       {m.away_team_name}
                     </span>
                   </div>
                   {(m.series_name || m.location_name) && (
-                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5 truncate">
+                    <p className="text-[10px] text-[var(--subtle2)] mt-1.5 break-words leading-snug">
                       {[m.series_name, m.location_name].filter(Boolean).join(' • ')}
                     </p>
                   )}

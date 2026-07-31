@@ -41,8 +41,8 @@ export default function LiveBanner() {
           </div>
 
           {/* Score */}
-          <div className="flex items-center justify-between gap-3">
-            <span className={`text-sm font-bold flex-1 truncate ${match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+          <div className="flex items-start justify-between gap-3">
+            <span className={`text-sm font-bold flex-1 min-w-0 break-words leading-tight ${match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
               {match.home_team_name}
             </span>
 
@@ -56,7 +56,7 @@ export default function LiveBanner() {
               </span>
             </div>
 
-            <span className={`text-sm font-bold flex-1 text-right truncate ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
+            <span className={`text-sm font-bold flex-1 min-w-0 text-right break-words leading-tight ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
               {match.away_team_name}
             </span>
           </div>

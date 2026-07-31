@@ -206,7 +206,7 @@ export default function RankingsPage() {
                         {team.logo && !team.logo.includes('no_logo') && (
                           <img src={team.logo} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                         )}
-                        <span className={`text-sm truncate ${isUs ? 'font-bold text-[var(--sand)]' : ''}`}>{team.name}</span>
+                        <span className={`text-sm break-words leading-tight ${isUs ? 'font-bold text-[var(--sand)]' : ''}`}>{team.name}</span>
                         {isUs && <span className="text-[10px] bg-[var(--sand)] text-[var(--sand-fg)] px-1.5 py-0.5 rounded-full flex-shrink-0">Wij</span>}
                       </div>
                       <span className={`w-8 text-center text-sm font-black ${isUs ? 'text-[var(--sand)]' : ''}`}>{team.points}</span>
