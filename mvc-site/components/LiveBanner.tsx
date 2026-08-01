@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Match } from '@/lib/types'
+import { scoreFor, type GoalRow, type CornerRow } from '@/lib/score'
 import Link from 'next/link'
 
 export default function LiveBanner() {
   const [match, setMatch] = useState<Match | null>(null)
+  const [goals, setGoals] = useState<GoalRow[]>([])
+  const [corners, setCorners] = useState<CornerRow[]>([])
 
   async function fetchLive() {
     const { data } = await supabase
@@ -16,6 +19,15 @@ export default function LiveBanner() {
       .limit(1)
       .maybeSingle()
     setMatch(data)
+    if (data) {
+      // A live match has no official result yet, so the score comes from the manual tally.
+      const [{ data: goalRows }, { data: cornerRows }] = await Promise.all([
+        supabase.from('goals').select('match_id, player_id, is_corner_goal').eq('match_id', data.id),
+        supabase.from('corners').select('match_id, is_goal').eq('match_id', data.id),
+      ])
+      setGoals(goalRows ?? [])
+      setCorners(cornerRows ?? [])
+    }
   }
 
   useEffect(() => {
@@ -26,8 +38,7 @@ export default function LiveBanner() {
 
   if (!match) return null
 
-  const homeScore = match.manual_home_score ?? match.rbfa_home_score
-  const awayScore = match.manual_away_score ?? match.rbfa_away_score
+  const score = scoreFor(match, goals, corners)
 
   return (
     <div className="mx-4 mb-[var(--v-gap)]">
@@ -48,11 +59,11 @@ export default function LiveBanner() {
 
             <div className="flex items-center gap-2 bg-black/30 rounded-xl px-4 py-2 flex-shrink-0">
               <span className="text-2xl font-black tabular-nums text-white">
-                {homeScore ?? 0}
+                {score?.home ?? 0}
               </span>
               <span className="text-white/40 font-bold">—</span>
               <span className="text-2xl font-black tabular-nums text-white">
-                {awayScore ?? 0}
+                {score?.away ?? 0}
               </span>
             </div>
 
@@ -61,9 +72,9 @@ export default function LiveBanner() {
             </span>
           </div>
 
-          {match.rbfa_home_score !== null && (
-            <p className="text-[10px] text-red-400/50 text-center mt-2">
-              Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}
+          {score?.disagrees && (
+            <p className="text-[11px] text-red-400/70 text-center mt-2">
+              Officieel {score.home}–{score.away} · geteld {score.disagrees.home}–{score.disagrees.away}
             </p>
           )}
         </div>

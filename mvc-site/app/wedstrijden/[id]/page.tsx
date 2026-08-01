@@ -116,8 +116,16 @@ export default function MatchDetailPage() {
     corners.filter((c) => c.is_goal).length
   const opponentScore = goals.filter((g) => g.player_id === null).length
 
-  const displayHomeScore = match.is_home_game ? ourScore : opponentScore
-  const displayAwayScore = match.is_home_game ? opponentScore : ourScore
+  const talliedHome = match.is_home_game ? ourScore : opponentScore
+  const talliedAway = match.is_home_game ? opponentScore : ourScore
+
+  // RBFA is the truth once it publishes; the tally counted during the match stands in until
+  // then. When both exist and disagree, show the tally too rather than quietly dropping it.
+  const hasOfficial = match.rbfa_home_score !== null && match.rbfa_away_score !== null
+  const displayHomeScore = hasOfficial ? (match.rbfa_home_score as number) : talliedHome
+  const displayAwayScore = hasOfficial ? (match.rbfa_away_score as number) : talliedAway
+  const tallyDiffers =
+    hasOfficial && (talliedHome !== match.rbfa_home_score || talliedAway !== match.rbfa_away_score)
   const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
 
   function broadcast() {
@@ -277,10 +285,15 @@ export default function MatchDetailPage() {
                   <span className="text-[var(--subtle2)]">—</span>
                   <span className="text-3xl font-black tabular-nums">{displayAwayScore}</span>
                 </div>
-                {match.rbfa_home_score !== null && (
-                  <p className="text-[10px] text-[var(--subtle2)] mt-1">
-                    Officieel: {match.rbfa_home_score}–{match.rbfa_away_score}
+                {hasOfficial ? (
+                  <p className="text-[11px] text-[var(--subtle)] mt-1 whitespace-nowrap">
+                    Officieel
+                    {tallyDiffers && (
+                      <span className="text-[var(--subtle2)]"> · zelf geteld {talliedHome}–{talliedAway}</span>
+                    )}
                   </p>
+                ) : (
+                  <p className="text-[11px] text-[var(--subtle2)] mt-1 whitespace-nowrap">Zelf geteld</p>
                 )}
               </>
             ) : (
