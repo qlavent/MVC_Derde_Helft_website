@@ -307,21 +307,26 @@ export default function KalenderPage() {
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setShowAdd(false)}>
           <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-5">Nieuw event</h3>
-            <div className="space-y-3">
+            {/* Same layout as the edit form on the event page: start and end each get a
+                full-width row with the date and time next to each other, rather than two
+                cramped columns. */}
+            <div className="space-y-4">
               <input
                 placeholder="Titel"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] placeholder-[var(--subtle)] focus:outline-none"
               />
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="text-[10px] text-[var(--subtle)] mb-1 block">Start</label>
+              <div>
+                <label className="text-[10px] text-[var(--subtle)] mb-1 block">Start</label>
+                <div className="flex gap-2">
                   <DateSelect value={form.start_date} onChange={(v) => setForm({ ...form, start_date: v })} />
                   <TimeSelect value={form.start_time} onChange={(v) => setForm({ ...form, start_time: v })} />
                 </div>
-                <div className="flex-1">
-                  <label className="text-[10px] text-[var(--subtle)] mb-1 block">Einde</label>
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--subtle)] mb-1 block">Einde</label>
+                <div className="flex gap-2">
                   <DateSelect value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
                   <TimeSelect value={form.end_time} onChange={(v) => setForm({ ...form, end_time: v })} />
                 </div>
@@ -332,7 +337,14 @@ export default function KalenderPage() {
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] placeholder-[var(--subtle)] focus:outline-none"
               />
-              <label className="flex items-center gap-3 cursor-pointer">
+              <textarea
+                placeholder="Beschrijving / notities"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={4}
+                className="w-full bg-[var(--muted)] rounded-xl px-4 py-3 text-[var(--fg)] placeholder-[var(--subtle)] focus:outline-none resize-none"
+              />
+              <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.include_in_ical}
