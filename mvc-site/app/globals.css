@@ -157,6 +157,30 @@ h1, h2, h3 { letter-spacing: -0.025em; }
   padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+/* ── Touch behaviour ────────────────────────────────────────────────────────
+   react-mobile-picker attaches its touchmove listener as *passive*, so it cannot
+   preventDefault() and the page scrolled along with the wheel. touch-action tells
+   the browser to keep its hands off the gesture entirely; the picker still gets
+   the touch events. overscroll-behavior stops any residual chaining.
+
+   touch-action: manipulation on controls removes the 300ms double-tap-to-zoom
+   gesture, which fired while tapping the arrows and time cells. Pinch zoom is
+   untouched, so this does not hurt accessibility.                              */
+.mvc-timepicker,
+.mvc-timepicker * {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+button,
+a,
+select,
+[role='button'],
+.react-datepicker__day,
+.react-datepicker__navigation {
+  touch-action: manipulation;
+}
+
 /* ── Tinted accents ─────────────────────────────────────────────────────────
    Tailwind cannot apply an alpha to a var() colour: `border-[var(--sand)]/30`
    compiles to NO rule at all, so those borders silently fell back to the default
