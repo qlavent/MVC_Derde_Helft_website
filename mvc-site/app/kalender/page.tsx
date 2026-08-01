@@ -9,34 +9,7 @@ import { nl } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Copy, Check, CalendarPlus } from 'lucide-react'
 import Link from 'next/link'
 import TimeSelect from '@/components/TimeSelect'
-import DatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
-import { nl as nlLocale } from 'date-fns/locale'
-
-function DateSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const selected = value ? new Date(value + 'T12:00:00') : null
-  return (
-    <DatePicker
-      selected={selected}
-      onChange={(date: Date | null) => {
-        if (date) {
-          const y = date.getFullYear()
-          const m = String(date.getMonth() + 1).padStart(2, '0')
-          const d = String(date.getDate()).padStart(2, '0')
-          onChange(`${y}-${m}-${d}`)
-        } else {
-          onChange('')
-        }
-      }}
-      dateFormat="dd/MM/yyyy"
-      locale={nlLocale}
-      placeholderText="dd/mm/jjjj"
-      className="flex-1 bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none w-full"
-      wrapperClassName="flex-1"
-      popperPlacement="bottom-start"
-    />
-  )
-}
+import DateSelect from '@/components/DateSelect'
 
 export default function KalenderPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())

@@ -21,7 +21,7 @@ export default function TimeSelect({ value, onChange }: { value: string; onChang
   const btnCls = "w-full flex items-center justify-center py-1 text-[var(--subtle)] hover:text-[var(--sand)] active:scale-95 transition-all text-lg leading-none select-none"
 
   return (
-    <div className="bg-[var(--muted)] border border-[var(--border)] rounded-xl overflow-hidden" style={{width: 120}}>
+    <div className="mvc-timepicker bg-[var(--muted)] border border-[var(--border)] rounded-xl overflow-hidden" style={{width: 120}}>
       <div className="flex border-b border-[var(--border)]">
         <button type="button" onClick={() => stepHour(1)} className={`${btnCls} border-r border-[var(--border)]`}>▲</button>
         <button type="button" onClick={() => stepMinute(1)} className={btnCls}>▲</button>
