@@ -44,6 +44,10 @@ export default function KalenderPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [showSubscribe, setShowSubscribe] = useState(false)
+  // Default to whatever the visitor is holding; they can still switch tabs.
+  const [device, setDevice] = useState<'android' | 'iphone'>(
+    typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? 'iphone' : 'android'
+  )
   const [copied, setCopied] = useState(false)
   const [form, setForm] = useState({ title: '', start_date: '', start_time: '', end_date: '', end_time: '', location: '', description: '', include_in_ical: true })
 
@@ -256,40 +260,68 @@ export default function KalenderPage() {
               </button>
             </div>
 
-            <a
-              href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(icalUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-center text-sm font-semibold bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl px-4 py-3 mb-4"
-            >
-              Toevoegen aan Google Agenda
-            </a>
-
-            <div className="space-y-4 text-xs leading-relaxed">
-              <div>
-                <p className="font-semibold mb-1">📱 Android</p>
-                <p className="text-[var(--subtle)]">
-                  Gebruik de knop hierboven. Lukt dat niet: open calendar.google.com in je browser
-                  (desktopweergave) → <span className="text-[var(--fg)]">Andere agenda&apos;s</span> → <span className="text-[var(--fg)]">+</span> → <span className="text-[var(--fg)]">Via URL</span> → link plakken.
-                  Zet daarna in de Google Agenda-app het vinkje aan bij de nieuwe agenda.
-                </p>
-              </div>
-              <div>
-                <p className="font-semibold mb-1">🍏 iPhone</p>
-                <p className="text-[var(--subtle)]">
-                  Instellingen → Apps → Agenda → <span className="text-[var(--fg)]">Accounts</span> → Account toevoegen →
-                  Andere → <span className="text-[var(--fg)]">Geabonneerde agenda toevoegen</span> → link plakken.
-                </p>
-              </div>
-              <div>
-                <p className="font-semibold mb-1">⏱️ Hoe snel verschijnt een nieuw event?</p>
-                <p className="text-[var(--subtle)]">
-                  Je telefoon haalt de agenda zelf op: iPhone meestal binnen een uur, Google Agenda soms pas
-                  na een dag. Dat kunnen wij niet versnellen. Moet iets er nu in staan? Gebruik dan de
-                  agenda-knop bij die wedstrijd of dat event — die voegt hem meteen toe.
-                </p>
-              </div>
+            {/* Pick your own device — each platform gets its own one-tap link, because the
+                shortcuts differ: Google needs a cid deep link, iOS opens on webcal://. */}
+            <div className="flex gap-1 mb-4">
+              {([
+                { key: 'android' as const, label: '📱 Android' },
+                { key: 'iphone' as const, label: '🍏 iPhone' },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setDevice(t.key)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                    device === t.key
+                      ? 'bg-[var(--sand)] text-[var(--sand-fg)]'
+                      : 'bg-[var(--muted)] text-[var(--subtle)]'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
+
+            {device === 'android' ? (
+              <div className="text-xs leading-relaxed">
+                <a
+                  href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(icalUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-center text-sm font-semibold bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl px-4 py-3 mb-3"
+                >
+                  Toevoegen aan Google Agenda
+                </a>
+                <p className="text-[var(--subtle)] mb-2">Lukt dat niet? Dan handmatig:</p>
+                <ol className="text-[var(--subtle)] space-y-1.5 list-decimal pl-4">
+                  <li>Open <span className="text-[var(--fg)]">calendar.google.com</span> in je browser, in desktopweergave.</li>
+                  <li>Links onderaan: <span className="text-[var(--fg)]">Andere agenda&apos;s</span> → <span className="text-[var(--fg)]">+</span> → <span className="text-[var(--fg)]">Via URL</span>.</li>
+                  <li>Plak de link hierboven en klik <span className="text-[var(--fg)]">Agenda toevoegen</span>.</li>
+                  <li>Open de Google Agenda-app en zet het vinkje aan bij de nieuwe agenda.</li>
+                </ol>
+              </div>
+            ) : (
+              <div className="text-xs leading-relaxed">
+                <a
+                  href={icalUrl.replace(/^https?:/, 'webcal:')}
+                  className="block text-center text-sm font-semibold bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl px-4 py-3 mb-3"
+                >
+                  Abonneren op agenda
+                </a>
+                <p className="text-[var(--subtle)] mb-2">Lukt dat niet? Dan handmatig:</p>
+                <ol className="text-[var(--subtle)] space-y-1.5 list-decimal pl-4">
+                  <li>Open <span className="text-[var(--fg)]">Instellingen</span> → <span className="text-[var(--fg)]">Apps</span> → <span className="text-[var(--fg)]">Agenda</span> → <span className="text-[var(--fg)]">Agenda-accounts</span>.</li>
+                  <li>Tik <span className="text-[var(--fg)]">Account toevoegen</span> → <span className="text-[var(--fg)]">Andere</span>.</li>
+                  <li>Tik <span className="text-[var(--fg)]">Geabonneerde agenda toevoegen</span>.</li>
+                  <li>Plak de link hierboven en tik <span className="text-[var(--fg)]">Volgende</span> → <span className="text-[var(--fg)]">Bewaar</span>.</li>
+                </ol>
+              </div>
+            )}
+
+            <p className="text-[11px] text-[var(--subtle2)] leading-relaxed mt-4 pt-3 border-t border-[var(--border)]">
+              <span className="text-[var(--subtle)]">Hoe snel verschijnt een nieuw event?</span> Je telefoon haalt de
+              agenda zelf op: iPhone meestal binnen een uur, Google Agenda soms pas na een dag. Dat kunnen wij niet
+              versnellen. Moet iets er nu in staan? Gebruik dan de agenda-knop bij die wedstrijd of dat event.
+            </p>
 
             <button onClick={() => setShowSubscribe(false)} className="w-full mt-5 text-sm text-[var(--subtle)] py-2">
               Sluiten
