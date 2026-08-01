@@ -218,15 +218,15 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {event.include_in_ical && (
-            <a
-              href={`/api/calendar.ics?event=${event.id}`}
-              download
-              className="flex items-center justify-center gap-2 w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl py-3 text-sm font-semibold"
-            >
-              📅 Voeg toe aan agenda
-            </a>
-          )}
+          {/* Not gated on include_in_ical: that flag decides whether the event goes out in
+              the shared feed, not whether you may add it to your own calendar. */}
+          <a
+            href={`/api/calendar.ics?event=${event.id}`}
+            download
+            className="flex items-center justify-center gap-2 w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl py-3 text-sm font-semibold"
+          >
+            📅 Voeg toe aan agenda
+          </a>
         </div>
       )}
 
