@@ -1,5 +1,6 @@
 'use client'
 
+import { forwardRef } from 'react'
 import DatePicker from 'react-datepicker'
 import { nl as nlLocale } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -8,14 +9,36 @@ import 'react-datepicker/dist/react-datepicker.css'
  * Date field for the event forms. Was duplicated verbatim in the kalender page and the
  * event detail page, so both had the same phone problems.
  *
- * inputMode="none" + readOnly on the input: tapping the field used to raise the keyboard
- * over the calendar, when the point is picking from the calendar. Both go on the input —
- * DatePicker's own readOnly prop would also stop the calendar opening.
+ * The trigger is a <button>, not an <input>. iOS Safari zooms in whenever a focused text
+ * field has a font size under 16px and never zooms back out, which left the page slightly
+ * enlarged after picking a date. A button is not a text-entry field, so it neither takes
+ * that zoom nor raises the keyboard — and the font size stays 14px to match the form.
  *
- * withPortal: renders the calendar as a centred overlay at body level instead of a popper.
- * Inside the new-event modal (which is overflow-y-auto) the popper got clipped, and on a
- * phone a centred sheet is easier to hit anyway.
+ * withPortal: the calendar renders as a centred overlay at body level. Inside the
+ * new-event modal (overflow-y-auto) a popper got clipped, and a centred sheet is easier
+ * to hit on a phone.
  */
+
+const DateTrigger = forwardRef<
+  HTMLButtonElement,
+  { value?: string; onClick?: () => void; placeholder?: string }
+>(function DateTrigger({ value, onClick, placeholder }, ref) {
+  return (
+    <button
+      type="button"
+      ref={ref}
+      onClick={onClick}
+      className="w-full bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-left focus:outline-none"
+    >
+      {value ? (
+        <span className="text-[var(--fg)]">{value}</span>
+      ) : (
+        <span className="text-[var(--subtle)]">{placeholder ?? 'dd/mm/jjjj'}</span>
+      )}
+    </button>
+  )
+})
+
 export default function DateSelect({
   value,
   onChange,
@@ -42,17 +65,7 @@ export default function DateSelect({
       placeholderText="dd/mm/jjjj"
       withPortal
       wrapperClassName="flex-1"
-      // inputMode is not in react-datepicker's prop types, so the field is supplied
-      // directly. DatePicker injects value and the click handler that opens the calendar.
-      customInput={
-        <input
-          // readOnly lives on the input, not on DatePicker: DatePicker's own readOnly
-          // prop also suppresses opening the calendar, which defeats the purpose.
-          readOnly
-          inputMode="none"
-          className="flex-1 bg-[var(--muted)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--fg)] text-sm focus:outline-none w-full cursor-pointer"
-        />
-      }
+      customInput={<DateTrigger />}
     />
   )
 }
