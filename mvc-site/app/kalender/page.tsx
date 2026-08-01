@@ -6,7 +6,7 @@ import type { CalendarEvent, Match } from '@/lib/types'
 import { toBrussels, formatBrussels, brusselsFormToUtcIso } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Copy, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Copy, Check, CalendarPlus } from 'lucide-react'
 import Link from 'next/link'
 import TimeSelect from '@/components/TimeSelect'
 import DatePicker from 'react-datepicker'
@@ -43,6 +43,7 @@ export default function KalenderPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [showAdd, setShowAdd] = useState(false)
+  const [showSubscribe, setShowSubscribe] = useState(false)
   const [copied, setCopied] = useState(false)
   const [form, setForm] = useState({ title: '', start_date: '', start_time: '', end_date: '', end_time: '', location: '', description: '', include_in_ical: true })
 
@@ -79,9 +80,10 @@ export default function KalenderPage() {
     fetchData()
   }
 
+  const icalUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/api/calendar.ics`
+
   function copyIcalUrl() {
-    const url = `${window.location.origin}/api/calendar.ics`
-    navigator.clipboard.writeText(url)
+    navigator.clipboard.writeText(icalUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -115,11 +117,10 @@ export default function KalenderPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={copyIcalUrl}
+            onClick={() => setShowSubscribe(true)}
             className="flex items-center gap-1.5 text-xs text-[var(--sand)] border border-sand-30 rounded-full px-3 py-1.5"
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Gekopieerd!' : 'iCal link'}
+            <CalendarPlus size={12} /> In agenda
           </button>
           <button
             onClick={() => setShowAdd(true)}
@@ -240,6 +241,63 @@ export default function KalenderPage() {
       </section>
 
       {/* Add event modal */}
+      {showSubscribe && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setShowSubscribe(false)}>
+          <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-1">Agenda synchroniseren</h3>
+            <p className="text-xs text-[var(--subtle)] mb-4">
+              Alle wedstrijden en events automatisch in je eigen agenda.
+            </p>
+
+            <div className="bg-[var(--muted)] rounded-xl px-3 py-2.5 mb-3 flex items-center gap-2">
+              <span className="text-[11px] break-all flex-1 leading-snug">{icalUrl}</span>
+              <button onClick={copyIcalUrl} className="flex-shrink-0 text-[var(--sand)]" aria-label="Kopieer link">
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+              </button>
+            </div>
+
+            <a
+              href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(icalUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-center text-sm font-semibold bg-[var(--sand)] text-[var(--sand-fg)] rounded-xl px-4 py-3 mb-4"
+            >
+              Toevoegen aan Google Agenda
+            </a>
+
+            <div className="space-y-4 text-xs leading-relaxed">
+              <div>
+                <p className="font-semibold mb-1">📱 Android</p>
+                <p className="text-[var(--subtle)]">
+                  Gebruik de knop hierboven. Lukt dat niet: open calendar.google.com in je browser
+                  (desktopweergave) → <span className="text-[var(--fg)]">Andere agenda&apos;s</span> → <span className="text-[var(--fg)]">+</span> → <span className="text-[var(--fg)]">Via URL</span> → link plakken.
+                  Zet daarna in de Google Agenda-app het vinkje aan bij de nieuwe agenda.
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">🍏 iPhone</p>
+                <p className="text-[var(--subtle)]">
+                  Instellingen → Apps → Agenda → <span className="text-[var(--fg)]">Accounts</span> → Account toevoegen →
+                  Andere → <span className="text-[var(--fg)]">Geabonneerde agenda toevoegen</span> → link plakken.
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">⏱️ Hoe snel verschijnt een nieuw event?</p>
+                <p className="text-[var(--subtle)]">
+                  Je telefoon haalt de agenda zelf op: iPhone meestal binnen een uur, Google Agenda soms pas
+                  na een dag. Dat kunnen wij niet versnellen. Moet iets er nu in staan? Gebruik dan de
+                  agenda-knop bij die wedstrijd of dat event — die voegt hem meteen toe.
+                </p>
+              </div>
+            </div>
+
+            <button onClick={() => setShowSubscribe(false)} className="w-full mt-5 text-sm text-[var(--subtle)] py-2">
+              Sluiten
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAdd && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setShowAdd(false)}>
           <div className="bg-[var(--surface)] rounded-3xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
