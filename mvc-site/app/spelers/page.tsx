@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useScrollLock } from '@/lib/useScrollLock'
 import { seasonOf as getSeason, brusselsFormToUtcIso } from '@/lib/utils'
 import type { Player, PlayerStats, CornerDuo } from '@/lib/types'
 import { ChevronDown, RefreshCw } from 'lucide-react'
@@ -36,6 +37,7 @@ export default function SpelersPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
+  useScrollLock(selectedPlayer !== null)
   const [pageTab, setPageTab] = useState<PageTab>('spelers')
   const [sortBy, setSortBy] = useState<'none' | 'goals' | 'games_played' | 'wins' | 'win_pct' | 'motm_count' | 'corners_taken' | 'yellow_cards'>('games_played')
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useScrollLock } from '@/lib/useScrollLock'
 import { toBrussels, brusselsFormToUtcIso } from '@/lib/utils'
 import type { CalendarEvent } from '@/lib/types'
 import { format } from 'date-fns'
@@ -19,6 +20,7 @@ export default function EventDetailPage() {
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showDelete, setShowDelete] = useState(false)
+  useScrollLock(showDelete)
   const [form, setForm] = useState({
     title: '', start_date: '', start_time: '', end_date: '', end_time: '', location: '', description: '', include_in_ical: true
   })
