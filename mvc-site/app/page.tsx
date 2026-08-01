@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { formatBrussels } from '@/lib/utils'
+import { scoreFor } from '@/lib/score'
 import ThemeToggle from '@/components/ThemeToggle'
 import LiveBanner from '@/components/LiveBanner'
 import UpcomingFeed from '@/components/UpcomingFeed'
@@ -16,12 +17,21 @@ async function getData() {
     .order('start_time', { ascending: false })
     .limit(5)
 
-  return { recentMatches }
+  // Goal and corner rows for the manual tally, which stands in until RBFA publishes.
+  const ids = (recentMatches ?? []).map((m) => m.id)
+  const [{ data: goals }, { data: corners }] = ids.length
+    ? await Promise.all([
+        supabase.from('goals').select('match_id, player_id, is_corner_goal').in('match_id', ids),
+        supabase.from('corners').select('match_id, is_goal').in('match_id', ids),
+      ])
+    : [{ data: [] }, { data: [] }]
+
+  return { recentMatches, goals: goals ?? [], corners: corners ?? [] }
 }
 
 
 export default async function HomePage() {
-  const { recentMatches } = await getData()
+  const { recentMatches, goals, corners } = await getData()
 
   return (
     // Locked to the viewport and taken out of <main>'s flow, so the global .pb-safe
@@ -66,13 +76,12 @@ export default async function HomePage() {
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none fade-edges space-y-[var(--v-gap)] pb-1">
           {recentMatches?.slice(0, 5).map((m) => {
-            const homeScore = m.manual_home_score ?? m.rbfa_home_score
-            const awayScore = m.manual_away_score ?? m.rbfa_away_score
-            const ourScore = m.is_home_game ? homeScore : awayScore
-            const theirScore = m.is_home_game ? awayScore : homeScore
+            const score = scoreFor(m, goals, corners)
+            const ourScore = score ? (m.is_home_game ? score.home : score.away) : null
+            const theirScore = score ? (m.is_home_game ? score.away : score.home) : null
             const result = ourScore !== null && theirScore !== null ? (ourScore > theirScore ? 'W' : ourScore === theirScore ? 'G' : 'V') : null
             const resultColor = result === 'W' ? 'bg-green-500/20 text-green-400' : result === 'V' ? 'bg-red-500/20 text-red-400' : 'bg-[var(--muted)] text-[var(--subtle)]'
-            const hasScore = homeScore !== null && awayScore !== null
+
             return (
               <Link key={m.id} href={`/wedstrijden/${m.id}`}>
                 <div className="bg-[var(--surface)] rounded-2xl p-[var(--v-pad)] border border-[var(--border)] hover:border-[var(--sand)] transition-colors">
@@ -90,11 +99,18 @@ export default async function HomePage() {
                     <span className={`text-sm font-semibold flex-1 min-w-0 break-words leading-tight ${m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
                       {m.home_team_name}
                     </span>
-                    {hasScore ? (
-                      <div className="flex items-center gap-1 bg-[var(--muted)] rounded-lg px-3 py-1 flex-shrink-0">
-                        <span className="text-lg font-bold tabular-nums">{homeScore}</span>
-                        <span className="text-[var(--subtle2)] mx-1">—</span>
-                        <span className="text-lg font-bold tabular-nums">{awayScore}</span>
+                    {score ? (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="flex items-center gap-1 bg-[var(--muted)] rounded-lg px-3 py-1">
+                          <span className="text-lg font-bold tabular-nums">{score.home}</span>
+                          <span className="text-[var(--subtle2)] mx-1">—</span>
+                          <span className="text-lg font-bold tabular-nums">{score.away}</span>
+                        </div>
+                        {score.disagrees && (
+                          <span className="text-[9px] text-[var(--subtle2)] mt-0.5 whitespace-nowrap">
+                            geteld {score.disagrees.home}–{score.disagrees.away}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div className="w-12 flex-shrink-0" />

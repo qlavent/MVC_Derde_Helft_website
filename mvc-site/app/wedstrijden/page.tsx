@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { seasonOf as getSeason } from '@/lib/utils'
 import type { Match } from '@/lib/types'
+import type { GoalRow, CornerRow } from '@/lib/score'
 import MatchCard from '@/components/MatchCard'
 import { RefreshCw, ChevronDown } from 'lucide-react'
 
@@ -12,6 +13,10 @@ const SEASON_KEY = 'mvc-wedstrijden-season'
 
 export default function WedstrijdenPage() {
   const [allMatches, setAllMatches] = useState<Match[]>([])
+  // Needed so a match tapped through during the game shows its score here too, before RBFA
+  // publishes the official result.
+  const [goals, setGoals] = useState<GoalRow[]>([])
+  const [corners, setCorners] = useState<CornerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState<string>('')
@@ -35,8 +40,14 @@ export default function WedstrijdenPage() {
   async function fetchMatches() {
     setLoading(true)
 
-    const { data } = await supabase.from('matches').select('*').order('start_time', { ascending: true })
+    const [{ data }, { data: goalRows }, { data: cornerRows }] = await Promise.all([
+      supabase.from('matches').select('*').order('start_time', { ascending: true }),
+      supabase.from('goals').select('match_id, player_id, is_corner_goal'),
+      supabase.from('corners').select('match_id, is_goal'),
+    ])
     const matches: Match[] = data ?? []
+    setGoals(goalRows ?? [])
+    setCorners(cornerRows ?? [])
 
     setAllMatches(matches)
 
@@ -149,7 +160,7 @@ export default function WedstrijdenPage() {
             const isNext = m.id === nextMatchId
             return (
               <div key={m.id} ref={isNext ? nextMatchRef : undefined}>
-                <MatchCard match={m} isNext={isNext} />
+                <MatchCard match={m} isNext={isNext} goals={goals} corners={corners} />
               </div>
             )
           })
