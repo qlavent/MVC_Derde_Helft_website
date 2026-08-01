@@ -8,6 +8,8 @@ import type { Match } from '@/lib/types'
 import MatchCard from '@/components/MatchCard'
 import { RefreshCw, ChevronDown } from 'lucide-react'
 
+const SEASON_KEY = 'mvc-wedstrijden-season'
+
 export default function WedstrijdenPage() {
   const [allMatches, setAllMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,11 +49,17 @@ export default function WedstrijdenPage() {
     const next = matches.find((m) => m.state === 'upcoming' || m.state === 'live')
     setNextMatchId(next?.id ?? null)
 
-    // Default to the season of the next match, so the summer break shows the new
-    // fixture list instead of an empty tab. Falls back to the most recent season.
+    // Remember the season across navigation: opening a match and coming back used to
+    // snap the picker to the default, losing the season you were browsing. sessionStorage
+    // rather than a URL param, because this page is statically rendered and reading search
+    // params would force it dynamic.
+    const remembered = sessionStorage.getItem(SEASON_KEY)
     const currentSeason = getSeason(new Date().toISOString())
     setSelectedSeason(
-      next ? getSeason(next.start_time)
+      remembered && sortedSeasons.includes(remembered) ? remembered
+        // Otherwise the season of the next match, so the summer break shows the new
+        // fixture list instead of an empty tab. Falls back to the most recent season.
+        : next ? getSeason(next.start_time)
         : sortedSeasons.includes(currentSeason) ? currentSeason
         : sortedSeasons[0]
     )
@@ -109,7 +117,10 @@ export default function WedstrijdenPage() {
           <div className="relative inline-block">
             <select
               value={selectedSeason}
-              onChange={(e) => setSelectedSeason(e.target.value)}
+              onChange={(e) => {
+                setSelectedSeason(e.target.value)
+                sessionStorage.setItem(SEASON_KEY, e.target.value)
+              }}
               className="appearance-none bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-4 pr-8 py-2 text-sm font-semibold focus:outline-none focus:border-[var(--sand)] cursor-pointer"
             >
               {seasons.map((s) => (

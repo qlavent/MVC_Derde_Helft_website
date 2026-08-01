@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useScrollLock } from '@/lib/useScrollLock'
 import type { CalendarEvent, Match } from '@/lib/types'
 import { toBrussels, formatBrussels, brusselsFormToUtcIso } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns'
@@ -17,6 +18,7 @@ export default function KalenderPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [showSubscribe, setShowSubscribe] = useState(false)
+  useScrollLock(showAdd || showSubscribe)
   // Default to whatever the visitor is holding; they can still switch tabs.
   const [device, setDevice] = useState<'android' | 'iphone'>(
     typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? 'iphone' : 'android'

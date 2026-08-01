@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useScrollLock } from '@/lib/useScrollLock'
 import { toBrussels } from '@/lib/utils'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
@@ -35,6 +36,11 @@ export default function MatchDetailPage() {
   const [showCardModal, setShowCardModal] = useState(false)
   const [showKitModal, setShowKitModal] = useState(false)
   const [showPlayerModal, setShowPlayerModal] = useState(false)
+
+  // Every overlay on this page, including the photo lightbox.
+  useScrollLock(
+    showGoalModal || showCornerModal || showCardModal || showKitModal || showPlayerModal || lightboxUrl !== null
+  )
 
   const fetchAll = useCallback(async () => {
     const [
