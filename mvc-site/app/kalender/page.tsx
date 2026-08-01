@@ -226,16 +226,16 @@ export default function KalenderPage() {
                     {e.location && <p className="text-xs text-[var(--subtle2)]">📍 {e.location}</p>}
                     {e.description && <p className="text-xs text-[var(--subtle2)] mt-1 line-clamp-2">{e.description}</p>}
                   </div>
-                  {e.include_in_ical && (
-                    <a
-                      href={`/api/calendar.ics?event=${e.id}`}
-                      download
-                      onClick={(ev) => ev.stopPropagation()}
-                      className="text-[10px] text-[var(--subtle)] border border-[var(--border)] rounded-lg px-2 py-1 ml-2 flex-shrink-0"
-                    >
-                      + Agenda
-                    </a>
-                  )}
+                  {/* Always offered: include_in_ical only controls the shared feed, it does
+                      not stop someone adding this one event to their own calendar. */}
+                  <a
+                    href={`/api/calendar.ics?event=${e.id}`}
+                    download
+                    onClick={(ev) => ev.stopPropagation()}
+                    className="text-[10px] text-[var(--subtle)] border border-[var(--border)] rounded-lg px-2 py-1 ml-2 flex-shrink-0"
+                  >
+                    + Agenda
+                  </a>
                 </div>
               </div>
               </Link>
@@ -366,7 +366,13 @@ export default function KalenderPage() {
                   onChange={(e) => setForm({ ...form, include_in_ical: e.target.checked })}
                   className="w-5 h-5 rounded"
                 />
-                <span className="text-sm">Opnemen in agenda sync</span>
+                <div>
+                  <span className="text-sm">Opnemen in agenda sync</span>
+                  <p className="text-[10px] text-[var(--subtle)] leading-snug">
+                    Zet dit aan om het event mee te sturen naar iedereen die de hele agenda volgt.
+                    Los toevoegen met de agenda-knop kan altijd, ook als dit uit staat.
+                  </p>
+                </div>
               </label>
               <button
                 disabled={!form.title || !form.start_date}

@@ -7,7 +7,7 @@ import { toBrussels } from '@/lib/utils'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
-import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2, MapPin } from 'lucide-react'
+import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2, MapPin, CalendarPlus } from 'lucide-react'
 import Link from 'next/link'
 
 type Tab = 'live' | 'info'
@@ -448,6 +448,15 @@ export default function MatchDetailPage() {
         {/* INFO TAB */}
         {tab === 'info' && (
           <div className="space-y-4">
+            {/* One game on its own — no need to follow the whole agenda for this. */}
+            <a
+              href={`/api/calendar.ics?match=${match.id}`}
+              download
+              className="flex items-center justify-center gap-2 w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl py-3 text-sm font-semibold"
+            >
+              <CalendarPlus size={15} /> Zet deze wedstrijd in je agenda
+            </a>
+
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Selectie</h3>
