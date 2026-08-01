@@ -8,6 +8,10 @@
 //     teamMembers goes null before a squad is published. So this sync only ever adds or
 //     updates rows — it never deletes, and never overwrites a value we have with null.
 //     Our database is the archive; RBFA is just the feed.
+//  3. RBFA is the source for FIXTURES, OFFICIAL RESULTS and LINEUPS only. Goals, corners,
+//     cards and opponent goals live in our own tables, entered during the match, and all
+//     player statistics are derived from those. RBFA's own card events are ignored on
+//     purpose — they arrive late and would double up on the manual entries.
 
 import { brusselsToUtc, seasonOf } from './time.mjs'
 
@@ -105,12 +109,6 @@ const detailQuery = (matchId) => `
       id state homeTeam { id } awayTeam { id }
       lineup { home { id firstName lastName } away { id firstName lastName } }
       substitutes { home { id firstName lastName } away { id firstName lastName } }
-      events {
-        ... on GroupedEvents {
-          home { kind minute lastName firstName teamId }
-          away { kind minute lastName firstName teamId }
-        }
-      }
     }
   }
 `
@@ -232,9 +230,13 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
     .lt('start_time', new Date(now.getTime() - 6 * 3600000).toISOString())
   if (staleErr) results.push(`FOUT bij matches (state): ${staleErr.message}`)
 
-  // 3. Lineups and cards. RBFA returns matchDetail: null for past seasons, so this is the
-  // only chance to archive a lineup — fetch it as soon as a match is played, and re-fetch
-  // while the match is still in its live window.
+  // 3. Lineups only. Cards, goals, corners and opponent goals are entered by hand in the
+  // app and are deliberately NOT imported: RBFA publishes them much later, so importing
+  // would duplicate what someone already tapped in during the match.
+  //
+  // RBFA returns matchDetail: null for past seasons, so this is the only chance to archive
+  // a lineup — fetch it as soon as a match is played, and re-fetch while the match is still
+  // in its live window in case the lineup is filled in during the game.
   const { data: matchRows } = await db.from('matches').select('id, rbfa_id')
   const idByRbfaId = new Map((matchRows ?? []).map((r) => [r.rbfa_id, r.id]))
 
@@ -243,7 +245,6 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
 
   const { data: playerRows } = await db.from('players').select('id, first_name, last_name')
   const playerByFullName = new Map((playerRows ?? []).map((p) => [nameKey(p.first_name, p.last_name), p.id]))
-  const playerByLastName = new Map((playerRows ?? []).map((p) => [nameKey('', p.last_name), p.id]))
 
   const wanted = incoming.filter(({ m }) => {
     const matchId = idByRbfaId.get(m.id)
@@ -257,7 +258,6 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
   }
 
   let lineupCount = 0
-  let cardCount = 0
   for (const { teamId, m } of todo) {
     const matchId = idByRbfaId.get(m.id)
     const detail = (await rbfaQuery(detailQuery(m.id))).matchDetail
@@ -277,27 +277,8 @@ export async function syncRbfa(db, { detailBudget = 8, now = new Date() } = {}) 
     if (await upsert(db, 'match_players', selection, { onConflict: 'match_id,player_id', ignoreDuplicates: true }, results)) {
       lineupCount += selection.length
     }
-
-    const cards = []
-    for (const group of detail.events ?? []) {
-      for (const ev of [...(group.home ?? []), ...(group.away ?? [])]) {
-        if (ev.kind !== 'yellow' && ev.kind !== 'red') continue
-        cards.push({
-          match_id: matchId,
-          player_id: playerByLastName.get(nameKey('', ev.lastName)) ?? null,
-          player_name_rbfa: `${ev.firstName} ${ev.lastName}`.trim(),
-          minute: ev.minute,
-          card_type: ev.kind,
-          source: 'rbfa',
-          rbfa_event_key: `${m.id}-${ev.teamId}-${ev.lastName}-${ev.minute}-${ev.kind}`,
-        })
-      }
-    }
-    if (await upsert(db, 'cards', cards, { onConflict: 'rbfa_event_key', ignoreDuplicates: true }, results)) {
-      cardCount += cards.length
-    }
   }
-  if (todo.length > 0) results.push(`${todo.length} matchdetails: ${lineupCount} selecties, ${cardCount} kaarten`)
+  if (todo.length > 0) results.push(`${todo.length} matchdetails: ${lineupCount} selecties`)
 
   results.push(...(await snapshotRankings(db, teamIds)))
   return results
