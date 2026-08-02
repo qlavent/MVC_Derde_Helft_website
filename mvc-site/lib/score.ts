@@ -7,11 +7,10 @@ import type { Match } from './types'
  * are tapped in during the match. Both are worth seeing, and it must always be obvious which
  * is which, so both are returned and labelled — not merged into one number.
  *
- *   not started        -> nothing at all
- *   started, no official -> the tally, counting 0-0 as a real result
- *   official, no tally   -> the official result only; a match nobody tracked is not claimed
- *                           to have finished 0-0 in the app
- *   both                 -> both, official first
+ *   not started -> nothing at all
+ *   started     -> always both labels: RBFA once they publish, plus the unofficial tally,
+ *                  which reads 0-0 when nothing was entered. 0-0 is a real result, so it is
+ *                  shown rather than omitted.
  */
 
 export interface GoalRow {
@@ -33,8 +32,8 @@ export interface Pair {
 export interface ScoreView {
   /** RBFA's result, once they publish it. */
   official: Pair | null
-  /** Counted from goals and corners entered in the app. */
-  tally: Pair | null
+  /** Counted from goals and corners entered in the app. 0-0 when nothing was entered. */
+  tally: Pair
   /** True when both exist and disagree — worth pointing out rather than hiding. */
   differs: boolean
 }
@@ -47,7 +46,7 @@ function countTally(
   match: Pick<Match, 'id' | 'is_home_game'>,
   goals: GoalRow[],
   corners: CornerRow[]
-): { pair: Pair; entered: boolean } {
+): Pair {
   const ourGoals = goals.filter((g) => g.match_id === match.id)
   const ourCorners = corners.filter((c) => c.match_id === match.id)
 
@@ -56,10 +55,7 @@ function countTally(
     ourCorners.filter((c) => c.is_goal).length
   const theirs = ourGoals.filter((g) => g.player_id === null).length
 
-  return {
-    pair: match.is_home_game ? { home: ours, away: theirs } : { home: theirs, away: ours },
-    entered: ourGoals.length > 0 || ourCorners.length > 0,
-  }
+  return match.is_home_game ? { home: ours, away: theirs } : { home: theirs, away: ours }
 }
 
 export function scoreView(
@@ -74,16 +70,12 @@ export function scoreView(
       ? { home: match.rbfa_home_score, away: match.rbfa_away_score }
       : null
 
-  const { pair, entered } = countTally(match, goals, corners)
-  // 0-0 is a real result, so an untracked match still shows a tally when that is the only
-  // score there is. With an official result in hand, an empty tally is just noise.
-  const tally = entered || !official ? pair : null
-
-  if (!official && !tally) return null
+  // A played match always has an unofficial score, 0-0 included.
+  const tally = countTally(match, goals, corners)
 
   return {
     official,
     tally,
-    differs: official !== null && tally !== null && (official.home !== tally.home || official.away !== tally.away),
+    differs: official !== null && (official.home !== tally.home || official.away !== tally.away),
   }
 }

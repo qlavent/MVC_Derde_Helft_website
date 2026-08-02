@@ -33,7 +33,6 @@ export default function ScoreBlock({
   // The prominent line: RBFA when they have published, otherwise the tally is all there is.
   const lead = score.official ?? score.tally
   const leadLabel = score.official ? 'RBFA' : 'Onofficieel'
-  if (!lead) return null
 
   return (
     <div className={`flex flex-col items-center ${s.gap} flex-shrink-0`}>
@@ -53,7 +52,7 @@ export default function ScoreBlock({
 
       {/* Only when RBFA is the lead is there a second score to show. Same shape as the
           first — label, then number — so neither can be read as belonging to the other. */}
-      {score.official && score.tally && (
+      {score.official && (
         <div className={`flex flex-col items-center ${s.gap} mt-1`}>
           <span className={`${s.label} uppercase tracking-widest ${labelColour} leading-none`}>
             Onofficieel
