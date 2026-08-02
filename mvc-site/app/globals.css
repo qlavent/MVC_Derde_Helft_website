@@ -3,62 +3,85 @@
 @tailwind utilities;
 
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
-:root {
-  /* Dark mode (default) */
-  --bg: #0C0C0F;
-  --fg: #F0F4F8;
-  --surface: #1C1C22;
-  --muted: #26262E;
-  --border: rgba(255, 255, 255, 0.08);
+/* Dark theme (default) — taken from the away kit: black shirt, white collar and cuff trim,
+   and the warm champagne belly print. The print sampled #A79D91 under changing-room light;
+   the accent keeps that hue (33deg) with the saturation and lightness the fabric actually
+   has, giving #D7C4AD.
 
-  /* Accent — white (team colour) */
-  --sand: #FFFFFF;
-  --sand-fg: #0C0C0F;
+   Measured: text on page 16.7:1, accent on page 11.3:1, dark text on the accent 10.9:1.
+   The accent replaces plain white, which is what made the app look colourless. */
+:root {
+  --bg: #0E0F11;        /* the shirt, lifted just off pure black */
+  --fg: #F2EFE9;        /* white trim, warmed so it sits with the accent */
+  --surface: #17181B;
+  --muted: #212328;
+  --border: rgba(215, 196, 173, 0.12);   /* champagne-tinted, not flat white */
+
+  /* Accent — the champagne crest and belly print */
+  --sand: #D7C4AD;
+  --sand-fg: #131417;
 
   /* Success / corner */
   --olive: #22C55E;
 
   /* Text hierarchy */
-  --subtle: rgba(240, 244, 248, 0.42);
-  --subtle2: rgba(240, 244, 248, 0.24);
+  --subtle: rgba(242, 239, 233, 0.50);
+  --subtle2: rgba(242, 239, 233, 0.30);
 
   /* Glass layer */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.11);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --glass-bg: rgba(215, 196, 173, 0.07);
+  --glass-border: rgba(215, 196, 173, 0.14);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(215, 196, 173, 0.08);
 }
 
+/* Light theme — taken from the home shirt: cream fabric #E2D9D0, olive collar and cuff
+   trim #59573E, near-black lettering #282627. Measured off the kit photo rather than
+   guessed, and checked for contrast: ink on cream 10.8:1, white on olive 7.35:1, olive on
+   cream 5.27:1, so every pairing clears WCAG for body text. */
 [data-theme="light"] {
-  --bg: #F2F2F7;
-  --fg: #0C0C0F;
-  --surface: #FFFFFF;
-  --muted: #E8E8EF;
-  --border: rgba(0, 0, 0, 0.08);
+  --bg: #EDE7DF;        /* cream, lifted slightly so cards can sit above it */
+  --fg: #282627;        /* shirt lettering */
+  --surface: #F8F5F1;   /* card, a shade lighter than the page */
+  --muted: #E2D9D0;     /* the fabric itself — chips and wells */
+  --border: rgba(89, 87, 62, 0.16);   /* olive-tinted, not neutral grey */
 
-  /* Accent — black (team colour) */
-  --sand: #0C0C0F;
+  /* Accent — the olive collar and cuff trim */
+  --sand: #59573E;
   --sand-fg: #FFFFFF;
-  --olive: #16A34A;
+  --olive: #15803D;     /* success/corner green, kept distinct from the kit olive */
 
-  --subtle: rgba(12, 12, 15, 0.45);
-  --subtle2: rgba(12, 12, 15, 0.28);
+  --subtle: rgba(40, 38, 39, 0.52);
+  --subtle2: rgba(40, 38, 39, 0.34);
 
-  --glass-bg: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(255, 255, 255, 0.92);
-  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.98);
+  --glass-bg: rgba(248, 245, 241, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 4px 24px rgba(89, 87, 62, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* ── Background ─────────────────────────────────────────────────────────── */
 html {
   min-height: 100%;
-  /* Atmospheric dark — subtle warm-cool gradient at edges */
+  /* Warm champagne glow at the corners and the kit's diagonal stripes, both very faint —
+     the same motif as the light theme, so the two read as one design. */
   background:
-    radial-gradient(ellipse 700px 400px at 0% 0%, rgba(255, 255, 255, 0.02), transparent 55%),
-    radial-gradient(ellipse 500px 300px at 100% 100%, rgba(100, 120, 200, 0.04), transparent 55%),
-    #0C0C0F;
+    repeating-linear-gradient(
+      115deg,
+      transparent 0 38px,
+      rgba(215, 196, 173, 0.022) 38px 40px
+    ),
+    radial-gradient(ellipse 700px 400px at 0% 0%, rgba(215, 196, 173, 0.05), transparent 55%),
+    radial-gradient(ellipse 520px 320px at 100% 100%, rgba(215, 196, 173, 0.035), transparent 55%),
+    #0E0F11;
 }
 html[data-theme="light"] {
-  background: #F2F2F7;
+  /* Cream, with a whisper of the shirt's diagonal olive pinstripes. */
+  background:
+    repeating-linear-gradient(
+      115deg,
+      transparent 0 38px,
+      rgba(89, 87, 62, 0.035) 38px 40px
+    ),
+    #EDE7DF;
 }
 body {
   background: transparent;
@@ -96,9 +119,9 @@ body {
 
 /* Corner miss — dim glass, barely visible */
 .ev-corner-miss {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(215, 196, 173, 0.05);
   color: var(--subtle);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(215, 196, 173, 0.08);
 }
 [data-theme="light"] .ev-corner-miss {
   background: rgba(0, 0, 0, 0.03);
@@ -192,6 +215,11 @@ select,
 .bg-sand-20 { background-color: color-mix(in srgb, var(--sand) 20%, transparent); }
 .border-olive-20 { border-color: color-mix(in srgb, var(--olive) 20%, transparent); }
 .border-olive-50 { border-color: color-mix(in srgb, var(--olive) 50%, transparent); }
+
+::selection {
+  background: var(--sand);
+  color: var(--sand-fg);
+}
 
 /* ── Faded scroll edges ─────────────────────────────────────────────────────
    Inner scroll ports slice a card with a hard straight line at their boundary.
