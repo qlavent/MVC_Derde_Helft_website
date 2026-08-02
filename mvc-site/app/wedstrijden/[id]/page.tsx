@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useScrollLock } from '@/lib/useScrollLock'
 import { toBrussels } from '@/lib/utils'
+import { scoreView } from '@/lib/score'
+import ScoreBlock from '@/components/ScoreBlock'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
@@ -116,16 +118,8 @@ export default function MatchDetailPage() {
     corners.filter((c) => c.is_goal).length
   const opponentScore = goals.filter((g) => g.player_id === null).length
 
-  const talliedHome = match.is_home_game ? ourScore : opponentScore
-  const talliedAway = match.is_home_game ? opponentScore : ourScore
-
-  // RBFA is the truth once it publishes; the tally counted during the match stands in until
-  // then. When both exist and disagree, show the tally too rather than quietly dropping it.
-  const hasOfficial = match.rbfa_home_score !== null && match.rbfa_away_score !== null
-  const displayHomeScore = hasOfficial ? (match.rbfa_home_score as number) : talliedHome
-  const displayAwayScore = hasOfficial ? (match.rbfa_away_score as number) : talliedAway
-  const tallyDiffers =
-    hasOfficial && (talliedHome !== match.rbfa_home_score || talliedAway !== match.rbfa_away_score)
+  // Same rule and same rendering as everywhere else — see lib/score.ts.
+  const score = scoreView(match, goals, corners)
   const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
 
   function broadcast() {
@@ -278,25 +272,10 @@ export default function MatchDetailPage() {
             {match.home_team_name}
           </span>
           <div className="flex flex-col items-center">
-            {match.state !== 'upcoming' ? (
-              <>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl font-black tabular-nums">{displayHomeScore}</span>
-                  <span className="text-[var(--subtle2)]">—</span>
-                  <span className="text-3xl font-black tabular-nums">{displayAwayScore}</span>
-                </div>
-                {hasOfficial ? (
-                  <p className="text-[11px] text-[var(--subtle)] mt-1 whitespace-nowrap">
-                    Officieel
-                    {tallyDiffers && (
-                      <span className="text-[var(--subtle2)]"> · zelf geteld {talliedHome}–{talliedAway}</span>
-                    )}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-[var(--subtle2)] mt-1 whitespace-nowrap">Zelf geteld</p>
-                )}
-              </>
+            {score ? (
+              <ScoreBlock score={score} size="hero" />
             ) : (
+              // Not started, or started with nothing to show yet: kickoff time instead.
               <span className="text-lg text-[var(--subtle)]">{format(matchDate, 'HH:mm')}</span>
             )}
           </div>
