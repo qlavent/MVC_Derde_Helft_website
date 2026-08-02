@@ -28,24 +28,28 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
+/* Light theme — taken from the home shirt: cream fabric #E2D9D0, olive collar and cuff
+   trim #59573E, near-black lettering #282627. Measured off the kit photo rather than
+   guessed, and checked for contrast: ink on cream 10.8:1, white on olive 7.35:1, olive on
+   cream 5.27:1, so every pairing clears WCAG for body text. */
 [data-theme="light"] {
-  --bg: #F2F2F7;
-  --fg: #0C0C0F;
-  --surface: #FFFFFF;
-  --muted: #E8E8EF;
-  --border: rgba(0, 0, 0, 0.08);
+  --bg: #EDE7DF;        /* cream, lifted slightly so cards can sit above it */
+  --fg: #282627;        /* shirt lettering */
+  --surface: #F8F5F1;   /* card, a shade lighter than the page */
+  --muted: #E2D9D0;     /* the fabric itself — chips and wells */
+  --border: rgba(89, 87, 62, 0.16);   /* olive-tinted, not neutral grey */
 
-  /* Accent — black (team colour) */
-  --sand: #0C0C0F;
+  /* Accent — the olive collar and cuff trim */
+  --sand: #59573E;
   --sand-fg: #FFFFFF;
-  --olive: #16A34A;
+  --olive: #15803D;     /* success/corner green, kept distinct from the kit olive */
 
-  --subtle: rgba(12, 12, 15, 0.45);
-  --subtle2: rgba(12, 12, 15, 0.28);
+  --subtle: rgba(40, 38, 39, 0.52);
+  --subtle2: rgba(40, 38, 39, 0.34);
 
-  --glass-bg: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(255, 255, 255, 0.92);
-  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.98);
+  --glass-bg: rgba(248, 245, 241, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 4px 24px rgba(89, 87, 62, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 /* ── Background ─────────────────────────────────────────────────────────── */
@@ -58,7 +62,14 @@ html {
     #0C0C0F;
 }
 html[data-theme="light"] {
-  background: #F2F2F7;
+  /* Cream, with a whisper of the shirt's diagonal olive pinstripes. */
+  background:
+    repeating-linear-gradient(
+      115deg,
+      transparent 0 38px,
+      rgba(89, 87, 62, 0.035) 38px 40px
+    ),
+    #EDE7DF;
 }
 body {
   background: transparent;
