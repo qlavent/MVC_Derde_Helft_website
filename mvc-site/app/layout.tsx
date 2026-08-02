@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import BottomNav from '@/components/BottomNav'
@@ -18,6 +18,14 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
   },
+}
+
+// Colours the phone's status bar and the splash screen when the app is opened from a
+// home-screen shortcut. Matches the dark theme's page colour, taken from the away kit.
+export const viewport: Viewport = {
+  themeColor: '#0E0F11',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
