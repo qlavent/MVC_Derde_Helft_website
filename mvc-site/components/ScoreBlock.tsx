@@ -10,8 +10,8 @@ import type { ScoreView } from '@/lib/score'
  */
 
 const SIZES = {
-  card: { number: 'text-lg', label: 'text-[9px]', second: 'text-[11px]', gap: 'gap-0.5' },
-  hero: { number: 'text-3xl', label: 'text-[10px]', second: 'text-base', gap: 'gap-1' },
+  card: { number: 'text-lg', label: 'text-[9px]', second: 'text-sm', gap: 'gap-0.5' },
+  hero: { number: 'text-3xl', label: 'text-[10px]', second: 'text-lg', gap: 'gap-1' },
 } as const
 
 export default function ScoreBlock({
@@ -32,7 +32,7 @@ export default function ScoreBlock({
 
   // The prominent line: RBFA when they have published, otherwise the tally is all there is.
   const lead = score.official ?? score.tally
-  const leadLabel = score.official ? 'RBFA' : 'Geteld'
+  const leadLabel = score.official ? 'RBFA' : 'Onofficieel'
   if (!lead) return null
 
   return (
@@ -51,12 +51,17 @@ export default function ScoreBlock({
         <span className={`${s.number} font-bold tabular-nums ${numberColour}`}>{lead.away}</span>
       </div>
 
-      {/* Only when RBFA is the lead is there a second line to show. */}
+      {/* Only when RBFA is the lead is there a second score to show. Same shape as the
+          first — label, then number — so neither can be read as belonging to the other. */}
       {score.official && score.tally && (
-        <span className={`${s.second} tabular-nums ${secondColour} leading-none whitespace-nowrap`}>
-          <span className={`${s.label} uppercase tracking-widest ${labelColour}`}>Geteld </span>
-          {score.tally.home}–{score.tally.away}
-        </span>
+        <div className={`flex flex-col items-center ${s.gap} mt-1`}>
+          <span className={`${s.label} uppercase tracking-widest ${labelColour} leading-none`}>
+            Onofficieel
+          </span>
+          <span className={`${s.second} font-semibold tabular-nums ${secondColour} leading-none whitespace-nowrap`}>
+            {score.tally.home}–{score.tally.away}
+          </span>
+        </div>
       )}
     </div>
   )
