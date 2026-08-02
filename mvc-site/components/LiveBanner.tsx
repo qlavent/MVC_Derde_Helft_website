@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Match } from '@/lib/types'
-import { scoreFor, type GoalRow, type CornerRow } from '@/lib/score'
+import { scoreView, type GoalRow, type CornerRow } from '@/lib/score'
+import ScoreBlock from '@/components/ScoreBlock'
 import Link from 'next/link'
 
 export default function LiveBanner() {
@@ -38,7 +39,7 @@ export default function LiveBanner() {
 
   if (!match) return null
 
-  const score = scoreFor(match, goals, corners)
+  const score = scoreView(match, goals, corners)
 
   return (
     <div className="mx-4 mb-[var(--v-gap)]">
@@ -57,26 +58,13 @@ export default function LiveBanner() {
               {match.home_team_name}
             </span>
 
-            <div className="flex items-center gap-2 bg-black/30 rounded-xl px-4 py-2 flex-shrink-0">
-              <span className="text-2xl font-black tabular-nums text-white">
-                {score?.home ?? 0}
-              </span>
-              <span className="text-white/40 font-bold">—</span>
-              <span className="text-2xl font-black tabular-nums text-white">
-                {score?.away ?? 0}
-              </span>
-            </div>
+            {score && <ScoreBlock score={score} size="card" onDark />}
 
             <span className={`text-sm font-bold flex-1 min-w-0 text-right break-words leading-tight ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
               {match.away_team_name}
             </span>
           </div>
 
-          {score?.disagrees && (
-            <p className="text-[11px] text-red-400/70 text-center mt-2">
-              Officieel {score.home}–{score.away} · geteld {score.disagrees.home}–{score.disagrees.away}
-            </p>
-          )}
         </div>
       </Link>
     </div>

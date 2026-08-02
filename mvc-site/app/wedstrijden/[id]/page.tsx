@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useScrollLock } from '@/lib/useScrollLock'
 import { toBrussels } from '@/lib/utils'
+import { scoreView } from '@/lib/score'
+import ScoreBlock from '@/components/ScoreBlock'
 import type { Match, Player, Goal, Corner, Card, Motm, KitCarrier, MatchPhoto } from '@/lib/types'
 import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
@@ -12,6 +14,9 @@ import { ChevronLeft, Plus, Shuffle, X, Camera, Trash2, MapPin, CalendarPlus } f
 import Link from 'next/link'
 
 type Tab = 'live' | 'info'
+
+/** Photos per match. Deleting one frees a slot. */
+const MAX_PHOTOS = 2
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -116,16 +121,8 @@ export default function MatchDetailPage() {
     corners.filter((c) => c.is_goal).length
   const opponentScore = goals.filter((g) => g.player_id === null).length
 
-  const talliedHome = match.is_home_game ? ourScore : opponentScore
-  const talliedAway = match.is_home_game ? opponentScore : ourScore
-
-  // RBFA is the truth once it publishes; the tally counted during the match stands in until
-  // then. When both exist and disagree, show the tally too rather than quietly dropping it.
-  const hasOfficial = match.rbfa_home_score !== null && match.rbfa_away_score !== null
-  const displayHomeScore = hasOfficial ? (match.rbfa_home_score as number) : talliedHome
-  const displayAwayScore = hasOfficial ? (match.rbfa_away_score as number) : talliedAway
-  const tallyDiffers =
-    hasOfficial && (talliedHome !== match.rbfa_home_score || talliedAway !== match.rbfa_away_score)
+  // Same rule and same rendering as everywhere else — see lib/score.ts.
+  const score = scoreView(match, goals, corners)
   const opponentName = match.is_home_game ? match.away_team_name : match.home_team_name
 
   function broadcast() {
@@ -159,6 +156,15 @@ export default function MatchDetailPage() {
     setUploading(true)
     setUploadError(null)
     try {
+      // Re-read rather than trusting the loaded state: someone else may have added one
+      // while this page sat open, and the storage object would otherwise be orphaned.
+      const { count } = await supabase
+        .from('match_photos')
+        .select('*', { count: 'exact', head: true })
+        .eq('match_id', id)
+      if ((count ?? 0) >= MAX_PHOTOS) {
+        throw new Error(`Maximum ${MAX_PHOTOS} foto's per wedstrijd. Verwijder er eerst één.`)
+      }
       const compressed = await compressImage(file)
       const path = `${id}/${Date.now()}.jpg`
       const { error: upErr } = await supabase.storage.from('match-photos').upload(path, compressed, { contentType: 'image/jpeg' })
@@ -278,25 +284,10 @@ export default function MatchDetailPage() {
             {match.home_team_name}
           </span>
           <div className="flex flex-col items-center">
-            {match.state !== 'upcoming' ? (
-              <>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl font-black tabular-nums">{displayHomeScore}</span>
-                  <span className="text-[var(--subtle2)]">—</span>
-                  <span className="text-3xl font-black tabular-nums">{displayAwayScore}</span>
-                </div>
-                {hasOfficial ? (
-                  <p className="text-[11px] text-[var(--subtle)] mt-1 whitespace-nowrap">
-                    Officieel
-                    {tallyDiffers && (
-                      <span className="text-[var(--subtle2)]"> · zelf geteld {talliedHome}–{talliedAway}</span>
-                    )}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-[var(--subtle2)] mt-1 whitespace-nowrap">Zelf geteld</p>
-                )}
-              </>
+            {score ? (
+              <ScoreBlock score={score} size="hero" />
             ) : (
+              // Not started, or started with nothing to show yet: kickoff time instead.
               <span className="text-lg text-[var(--subtle)]">{format(matchDate, 'HH:mm')}</span>
             )}
           </div>
@@ -551,7 +542,15 @@ export default function MatchDetailPage() {
             {/* Photo gallery */}
             <div className="bg-[var(--surface)] rounded-2xl p-4 border border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">📸 Foto's</h3>
+                <h3 className="text-sm font-semibold">
+                  📸 Foto&apos;s
+                  <span className="text-[10px] text-[var(--subtle2)] font-normal ml-1.5">
+                    {photos.length}/{MAX_PHOTOS}
+                  </span>
+                </h3>
+                {photos.length >= MAX_PHOTOS ? (
+                  <span className="text-[10px] text-[var(--subtle2)]">Max bereikt</span>
+                ) : (
                 <label className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl cursor-pointer transition-colors ${
                   uploading ? 'bg-[var(--muted)] text-[var(--subtle2)]' : 'bg-[var(--sand)] text-[var(--sand-fg)]'
                 }`}>
@@ -569,6 +568,7 @@ export default function MatchDetailPage() {
                     }}
                   />
                 </label>
+                )}
               </div>
               {uploadError && (
                 <p className="text-xs text-red-400 mb-2 break-all">{uploadError}</p>
@@ -576,7 +576,7 @@ export default function MatchDetailPage() {
               {photos.length === 0 ? (
                 <p className="text-xs text-[var(--subtle2)]">Nog geen foto's</p>
               ) : (
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 gap-1.5">
                   {photos.map((p) => (
                     <div key={p.id} className="relative aspect-square group">
                       <img
@@ -587,9 +587,10 @@ export default function MatchDetailPage() {
                       />
                       <button
                         onClick={() => deletePhoto(p)}
-                        className="absolute top-1 right-1 bg-black/60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1.5 right-1.5 bg-black/60 rounded-full p-1.5"
+                        aria-label="Foto verwijderen"
                       >
-                        <Trash2 size={11} className="text-white" />
+                        <Trash2 size={13} className="text-white" />
                       </button>
                     </div>
                   ))}

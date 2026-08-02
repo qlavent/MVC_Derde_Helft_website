@@ -1,19 +1,16 @@
 import type { Match } from './types'
 
 /**
- * Which score to show for a match, in one place.
+ * Which scores a match has, in one place. Rendering lives in components/ScoreBlock.
  *
- * RBFA is the source of truth for the season, but it publishes results days late, which is
- * why goals and corners are tapped in during the match. So:
+ * RBFA owns the official result for the season but publishes days late, so goals and corners
+ * are tapped in during the match. Both are worth seeing, and it must always be obvious which
+ * is which, so both are returned and labelled — not merged into one number.
  *
- *   - official result available  -> that is the score
- *   - not yet available          -> the manual tally stands in
- *   - both available and equal   -> just the one number
- *   - both available and differ  -> show the manual tally alongside, because a mismatch is
- *                                   worth seeing rather than silently discarding
- *
- * A match with no goal or corner rows at all has no manual tally — deliberately not treated
- * as 0-0, since "nobody tracked it" and "it really was 0-0" are indistinguishable.
+ *   not started -> nothing at all
+ *   started     -> always both labels: RBFA once they publish, plus the unofficial tally,
+ *                  which reads 0-0 when nothing was entered. 0-0 is a real result, so it is
+ *                  shown rather than omitted.
  */
 
 export interface GoalRow {
@@ -27,28 +24,31 @@ export interface CornerRow {
   is_goal: boolean
 }
 
-export interface MatchScore {
+export interface Pair {
   home: number
   away: number
-  /** 'official' = from RBFA, 'manual' = counted from goals and corners in the app. */
-  source: 'official' | 'manual'
-  /** The manual tally, only when an official result exists and disagrees with it. */
-  disagrees: { home: number; away: number } | null
+}
+
+export interface ScoreView {
+  /** RBFA's result, once they publish it. */
+  official: Pair | null
+  /** Counted from goals and corners entered in the app. 0-0 when nothing was entered. */
+  tally: Pair
+  /** True when both exist and disagree — worth pointing out rather than hiding. */
+  differs: boolean
 }
 
 /**
  * Our goals: regular goals with a player, plus corners that were scored.
  * Opponent goals: goal rows with no player, which is how they are entered.
- * Mirrors the counting on the match page.
  */
-export function manualTally(
+function countTally(
   match: Pick<Match, 'id' | 'is_home_game'>,
   goals: GoalRow[],
   corners: CornerRow[]
-): { home: number; away: number } | null {
+): Pair {
   const ourGoals = goals.filter((g) => g.match_id === match.id)
   const ourCorners = corners.filter((c) => c.match_id === match.id)
-  if (ourGoals.length === 0 && ourCorners.length === 0) return null
 
   const ours =
     ourGoals.filter((g) => g.player_id !== null && !g.is_corner_goal).length +
@@ -58,21 +58,24 @@ export function manualTally(
   return match.is_home_game ? { home: ours, away: theirs } : { home: theirs, away: ours }
 }
 
-export function scoreFor(
-  match: Pick<Match, 'id' | 'is_home_game' | 'rbfa_home_score' | 'rbfa_away_score'>,
+export function scoreView(
+  match: Pick<Match, 'id' | 'is_home_game' | 'state' | 'rbfa_home_score' | 'rbfa_away_score'>,
   goals: GoalRow[],
   corners: CornerRow[]
-): MatchScore | null {
-  const manual = manualTally(match, goals, corners)
-  const hasOfficial = match.rbfa_home_score !== null && match.rbfa_away_score !== null
+): ScoreView | null {
+  if (match.state === 'upcoming') return null
 
-  if (hasOfficial) {
-    const home = match.rbfa_home_score as number
-    const away = match.rbfa_away_score as number
-    const differs = manual !== null && (manual.home !== home || manual.away !== away)
-    return { home, away, source: 'official', disagrees: differs ? manual : null }
+  const official =
+    match.rbfa_home_score !== null && match.rbfa_away_score !== null
+      ? { home: match.rbfa_home_score, away: match.rbfa_away_score }
+      : null
+
+  // A played match always has an unofficial score, 0-0 included.
+  const tally = countTally(match, goals, corners)
+
+  return {
+    official,
+    tally,
+    differs: official !== null && (official.home !== tally.home || official.away !== tally.away),
   }
-
-  if (manual) return { ...manual, source: 'manual', disagrees: null }
-  return null
 }

@@ -3,7 +3,8 @@ import { format } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import type { Match } from '@/lib/types'
 import { toBrussels } from '@/lib/utils'
-import { scoreFor, type GoalRow, type CornerRow } from '@/lib/score'
+import { scoreView, type GoalRow, type CornerRow } from '@/lib/score'
+import ScoreBlock from '@/components/ScoreBlock'
 
 interface Props {
   match: Match
@@ -19,7 +20,7 @@ interface Props {
 
 export default function MatchCard({ match, showLink = true, isNext = false, compact = false, goals = [], corners = [] }: Props) {
   const date = toBrussels(match.start_time)
-  const score = scoreFor(match, goals, corners)
+  const score = scoreView(match, goals, corners)
 
   const card = (
     <div className={`bg-[var(--surface)] rounded-2xl border transition-colors
@@ -54,22 +55,7 @@ export default function MatchCard({ match, showLink = true, isNext = false, comp
           {match.home_team_name}
         </span>
 
-        {score ? (
-          <div className="flex flex-col items-center flex-shrink-0">
-            <div className="flex items-center gap-1 bg-[var(--muted)] rounded-lg px-3 py-1">
-              <span className="text-lg font-bold tabular-nums">{score.home}</span>
-              <span className="text-[var(--subtle2)] mx-1">—</span>
-              <span className="text-lg font-bold tabular-nums">{score.away}</span>
-            </div>
-            {score.disagrees && (
-              <span className="text-[9px] text-[var(--subtle2)] mt-0.5 whitespace-nowrap">
-                geteld {score.disagrees.home}–{score.disagrees.away}
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="w-12 flex-shrink-0" />
-        )}
+        {score ? <ScoreBlock score={score} size="card" /> : <div className="w-12 flex-shrink-0" />}
 
         <span className={`text-sm font-semibold flex-1 min-w-0 text-right break-words leading-tight ${!match.is_home_game ? 'text-[var(--sand)]' : ''}`}>
           {match.away_team_name}

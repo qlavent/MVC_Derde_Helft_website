@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { formatBrussels } from '@/lib/utils'
-import { scoreFor } from '@/lib/score'
+import { scoreView } from '@/lib/score'
+import ScoreBlock from '@/components/ScoreBlock'
 import ThemeToggle from '@/components/ThemeToggle'
 import LiveBanner from '@/components/LiveBanner'
 import UpcomingFeed from '@/components/UpcomingFeed'
@@ -76,9 +77,11 @@ export default async function HomePage() {
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-none fade-edges space-y-[var(--v-gap)] pb-1">
           {recentMatches?.slice(0, 5).map((m) => {
-            const score = scoreFor(m, goals, corners)
-            const ourScore = score ? (m.is_home_game ? score.home : score.away) : null
-            const theirScore = score ? (m.is_home_game ? score.away : score.home) : null
+            const score = scoreView(m, goals, corners)
+            // Win/loss badge follows the same precedence: RBFA if published, else the tally.
+            const decisive = score?.official ?? score?.tally ?? null
+            const ourScore = decisive ? (m.is_home_game ? decisive.home : decisive.away) : null
+            const theirScore = decisive ? (m.is_home_game ? decisive.away : decisive.home) : null
             const result = ourScore !== null && theirScore !== null ? (ourScore > theirScore ? 'W' : ourScore === theirScore ? 'G' : 'V') : null
             const resultColor = result === 'W' ? 'bg-green-500/20 text-green-400' : result === 'V' ? 'bg-red-500/20 text-red-400' : 'bg-[var(--muted)] text-[var(--subtle)]'
 
@@ -99,22 +102,7 @@ export default async function HomePage() {
                     <span className={`text-sm font-semibold flex-1 min-w-0 break-words leading-tight ${m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
                       {m.home_team_name}
                     </span>
-                    {score ? (
-                      <div className="flex flex-col items-center flex-shrink-0">
-                        <div className="flex items-center gap-1 bg-[var(--muted)] rounded-lg px-3 py-1">
-                          <span className="text-lg font-bold tabular-nums">{score.home}</span>
-                          <span className="text-[var(--subtle2)] mx-1">—</span>
-                          <span className="text-lg font-bold tabular-nums">{score.away}</span>
-                        </div>
-                        {score.disagrees && (
-                          <span className="text-[9px] text-[var(--subtle2)] mt-0.5 whitespace-nowrap">
-                            geteld {score.disagrees.home}–{score.disagrees.away}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-12 flex-shrink-0" />
-                    )}
+                    {score ? <ScoreBlock score={score} size="card" /> : <div className="w-12 flex-shrink-0" />}
                     <span className={`text-sm font-semibold flex-1 min-w-0 text-right break-words leading-tight ${!m.is_home_game ? 'text-[var(--sand)]' : ''}`}>
                       {m.away_team_name}
                     </span>
