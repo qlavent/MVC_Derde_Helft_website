@@ -17,6 +17,10 @@ export default function BottomNav() {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
 
+  // This dock lives in the root layout, so it would otherwise render inside the CL Poule
+  // section too — that section has its own dock (components/ucl/UclDock.tsx).
+  if (pathname.startsWith('/voorspellingen')) return null
+
   return (
     <div className="fixed bottom-5 left-0 right-0 z-50 flex items-center justify-center px-4">
       <div className="glass flex items-center gap-1 px-3 py-2 rounded-2xl">
