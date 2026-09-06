@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useUclSession } from '@/lib/ucl/session'
+import { useMissingCount } from '@/lib/ucl/useMissingCount'
 import UclDock from '@/components/ucl/UclDock'
 
 /** The two routes a visitor can reach without a session and without a name. */
@@ -51,9 +52,15 @@ export default AuthGate
  * The dock, minus the routes where there is nothing to navigate to. Lives here rather than in
  * the layout because the layout is a server component (it exports `metadata`) and this needs
  * `usePathname`.
+ *
+ * The badge count (decision 13) is fetched here rather than passed down, because the dock is
+ * rendered by the layout and none of the four screens is its parent. The hook is called before
+ * the early return: hooks may not be skipped, and on the open routes it costs nothing anyway
+ * since it returns 0 without a session.
  */
 export function UclDockSlot() {
   const pathname = usePathname()
+  const missingCount = useMissingCount()
   if (OPEN_ROUTES.includes(pathname)) return null
-  return <UclDock />
+  return <UclDock missingCount={missingCount} />
 }

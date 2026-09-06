@@ -69,3 +69,30 @@ assert.equal(done.matches.length, 1)
 assert.deepEqual(currentMatchday([]).matches, [])
 
 console.log('ok — matchday selection is deterministic')
+
+// --- round labels, shared by three screens ---------------------------------------
+import { matchdayLabel, isLeagueStage } from '../lib/ucl/labels.mjs'
+
+assert.equal(matchdayLabel('LEAGUE_STAGE', 3), 'Speeldag 3')
+assert.equal(matchdayLabel('GROUP_STAGE', 6), 'Speeldag 6', 'the pre-2024 format still reads right')
+assert.equal(matchdayLabel('LEAGUE_STAGE', null), 'Competitiefase')
+
+// two-legged ties must be distinguishable, or a picker lists the round twice
+assert.equal(matchdayLabel('QUARTER_FINALS', 1), 'Kwartfinales — heen')
+assert.equal(matchdayLabel('QUARTER_FINALS', 2), 'Kwartfinales — terug')
+assert.equal(matchdayLabel('QUARTER_FINALS', null), 'Kwartfinales')
+
+// the same round under either vocabulary must produce the same Dutch
+assert.equal(matchdayLabel('LAST_16', null), matchdayLabel('ROUND_OF_16', null))
+assert.equal(matchdayLabel('PLAYOFFS', null), matchdayLabel('PLAY_OFF_ROUND', null))
+assert.equal(matchdayLabel('FINAL', null), 'Finale')
+
+// unknown input degrades to words, never SCREAMING_SNAKE and never a crash
+assert.equal(matchdayLabel('SOME_NEW_ROUND', null), 'Some new round')
+assert.equal(matchdayLabel(null, null), 'Wedstrijden')
+assert.equal(matchdayLabel(null, 4), 'Speeldag 4')
+
+assert.equal(isLeagueStage('LEAGUE_STAGE'), true)
+assert.equal(isLeagueStage('FINAL'), false)
+
+console.log('ok — round labels are consistent across screens')
