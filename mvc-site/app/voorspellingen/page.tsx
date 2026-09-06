@@ -197,8 +197,3 @@ function Wedstrijden() {
 function groupKey(stage: string | null, matchday: number | null): string {
   return `${stage ?? ''}|${matchday ?? ''}`
 }
-
-/**
- * football-data.org stage names in Dutch. The league phase is numbered ("Speeldag 3"); the
- * knockout rounds are one match each, so they get the round's name instead.
- */
