@@ -1,0 +1,141 @@
+/* ── CL Poule tokens ─────────────────────────────────────────────────────────
+   Spec decisions 9 and 10: a fully distinct palette from the minivoetbal app.
+
+   Everything is scoped under `.ucl-app` (the section layout puts that class on its
+   root element), and it redefines the SAME token names globals.css already uses
+   (--bg, --fg, --surface, --muted, --border, --sand, --sand-fg, --subtle,
+   --subtle2, --glass-*). That way every existing component class — .glass,
+   .border-sand-30, .bg-sand-10, .fade-edges, the datepicker overrides — keeps
+   working unchanged, and nothing can leak back into the minivoetbal app because
+   no rule here touches :root.
+
+   Palette: deep European-night navy, near-white ice text, electric blue accent.
+
+   Measured contrast (WCAG 2.1, sRGB):
+     dark   text  #E8ECF8 on page   #0A1226 → 15.77:1
+            text  #E8ECF8 on card   #16204A → 13.28:1
+            accent #3B82F6 on page  #0A1226 →  5.06:1  (clears 4.5 for text)
+            accent #3B82F6 on card  #16204A →  4.26:1  (see note below)
+            --sand-fg #0A1226 on accent     →  5.06:1
+            --subtle (55% ice) on page      →  5.40:1, on card 4.96:1
+     light  text  #101A38 on page   #E4EAF6 → 14.18:1
+            text  #101A38 on card   #F5F8FF → 16.10:1
+            accent #1D4ED8 on page  #E4EAF6 →  5.55:1, on card 6.30:1
+            --sand-fg #FFFFFF on accent     →  6.70:1
+            --subtle (65% navy) on page     →  4.97:1, on card 5.23:1
+
+   Two honest caveats:
+   1. #3B82F6 on the card colour #16204A is 4.26:1, just under 4.5. Both hexes are
+      fixed by decision 10, so the accent is for large text (≥18.66px bold /
+      ≥24px) and UI affordances on cards — it clears the 3:1 non-text bar with
+      room. Body copy on a card uses --fg. On the page background it is 5.06:1
+      and safe for text of any size.
+   2. The light theme cannot reuse #3B82F6: on a pale background it measures
+      3.05:1, which fails text. --sand becomes #1D4ED8 there — the same electric
+      blue, two stops darker — at 5.55:1.
+
+   --subtle2 is decorative only (hairlines, disabled glyphs, watermarks). It does
+   not reach 4.5:1 by design and must never carry text that has to be read.      */
+
+.ucl-app {
+  --bg: #0A1226;        /* stadium night */
+  --fg: #E8ECF8;        /* floodlit white */
+  --surface: #16204A;   /* card */
+  --muted: #1E2A5C;     /* chips, wells, active dock item */
+  --border: rgba(96, 165, 250, 0.16);   /* blue-tinted, never flat grey */
+
+  /* Accent — electric blue */
+  --sand: #3B82F6;
+  --sand-fg: #0A1226;
+
+  /* Success / correct prediction */
+  --olive: #22C55E;
+
+  /* Text hierarchy */
+  --subtle: rgba(232, 236, 248, 0.55);
+  --subtle2: rgba(232, 236, 248, 0.34);
+
+  /* Glass layer — bluer and colder than the kit's champagne glass */
+  --glass-bg: rgba(59, 130, 246, 0.10);
+  --glass-border: rgba(147, 197, 253, 0.18);
+  --glass-shadow: 0 8px 32px rgba(3, 7, 20, 0.65), inset 0 1px 0 rgba(147, 197, 253, 0.10);
+
+  color: var(--fg);
+  min-height: 100dvh;
+  /* Makes .ucl-app a stacking context so the z-index:-1 backdrop below paints above
+     <body>'s own background-color (an ancestor background always paints before a
+     descendant stacking context) instead of being buried under it. */
+  isolation: isolate;
+}
+
+[data-theme='light'] .ucl-app {
+  --bg: #E4EAF6;        /* pale blue-grey */
+  --fg: #101A38;        /* dark navy */
+  --surface: #F5F8FF;
+  --muted: #D3DDF0;
+  --border: rgba(29, 78, 216, 0.18);
+
+  --sand: #1D4ED8;      /* see caveat 2 above */
+  --sand-fg: #FFFFFF;
+  --olive: #15803D;
+
+  --subtle: rgba(16, 26, 56, 0.65);
+  --subtle2: rgba(16, 26, 56, 0.42);
+
+  --glass-bg: rgba(245, 248, 255, 0.84);
+  --glass-border: rgba(255, 255, 255, 0.92);
+  --glass-shadow: 0 4px 24px rgba(29, 78, 216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* ── Page backdrop ──────────────────────────────────────────────────────────
+   The root layout centres its <main> in a max-w-lg column, so a background on
+   .ucl-app itself would only paint that column and the kit's html background
+   would show either side. A fixed, full-viewport pseudo-element covers the whole
+   page instead, at z-index -1 so it sits behind the content but still inside the
+   section — leave the section and it is gone.
+
+   Character, not just colour (decision 9): a floodlight glow from the top and a
+   very faint star field. Two tiled radial-gradients, no images, no JS.          */
+.ucl-app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(232, 236, 248, 0.5) 0.6px, transparent 0.9px) 0 0 / 92px 74px,
+    radial-gradient(circle, rgba(147, 197, 253, 0.35) 0.9px, transparent 1.3px) 41px 33px / 137px 111px,
+    radial-gradient(ellipse 120% 55% at 50% -12%, rgba(59, 130, 246, 0.22), transparent 70%),
+    radial-gradient(ellipse 80% 50% at 50% 115%, rgba(29, 78, 216, 0.16), transparent 70%),
+    var(--bg);
+}
+[data-theme='light'] .ucl-app::before {
+  /* No stars in daylight — just the floodlight bloom, and much weaker. */
+  background:
+    radial-gradient(ellipse 120% 55% at 50% -12%, rgba(59, 130, 246, 0.12), transparent 70%),
+    radial-gradient(ellipse 80% 50% at 50% 115%, rgba(29, 78, 216, 0.07), transparent 70%),
+    var(--bg);
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────────
+   The section's own card shape: squarer than the kit's pill-heavy cards, with a
+   thin blue top highlight so a stack of them reads as lit from above.           */
+.ucl-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 0 rgba(147, 197, 253, 0.10) inset,
+    0 6px 20px rgba(3, 7, 20, 0.35);
+}
+[data-theme='light'] .ucl-card {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 16px rgba(29, 78, 216, 0.08);
+}
+
+/* Section heading rule — a short accent bar instead of the kit's plain label. */
+.ucl-rule {
+  border-left: 3px solid var(--sand);
+  padding-left: 0.625rem;
+}
