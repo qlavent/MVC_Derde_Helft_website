@@ -229,7 +229,16 @@ function StatusChip({
   finished: boolean
 }) {
   if (finished) return <Chip>Gespeeld</Chip>
-  if (match.status === 'IN_PLAY' || match.status === 'PAUSED') return <Chip accent>Bezig</Chip>
+  if (match.status === 'IN_PLAY' || match.status === 'PAUSED')
+    return (
+      <Chip accent>
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle animate-pulse"
+          style={{ background: 'var(--sand)' }}
+        />
+        {match.status === 'PAUSED' ? 'Rust' : 'Live'}
+      </Chip>
+    )
   if (locked)
     return (
       <Chip>
