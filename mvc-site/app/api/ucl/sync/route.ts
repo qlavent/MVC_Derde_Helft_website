@@ -7,13 +7,21 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * Pulls the Champions League fixtures and results, then scores any prediction whose match has
- * finished. One API call per run, well inside football-data.org's 10-per-minute free tier.
+ * Pulls the Champions League fixtures and results, then (re)scores every prediction whose match
+ * has finished. One API call per run, well inside football-data.org's 10-per-minute free tier.
  *
- * Scoring is idempotent by construction: only predictions with points IS NULL are considered,
- * so a re-run cannot double-count and a partial failure simply finishes next time. The Discord
- * bot instead marked a match "processed" and incremented a running total per user, which loses
- * points if it fails midway.
+ * Scoring recomputes from the freshly-upserted score on every run and writes only the rows whose
+ * points actually changed. Two things fall out of that:
+ *   - It is idempotent: an unchanged score produces no writes, so a re-run cannot double-count
+ *     and a partial failure simply finishes next time.
+ *   - It is self-correcting: football-data.org sometimes revises a full-time score after the
+ *     final whistle (a disallowed goal, a VAR change, a provisional score fixed later). The
+ *     match row already follows the API because it is re-upserted every run; recomputing points
+ *     the same way means a corrected score re-scores the affected predictions automatically,
+ *     instead of leaving people frozen on points from a score that no longer exists.
+ *
+ * The earlier version only touched predictions with points IS NULL, so a correction updated the
+ * displayed score but never the points — exactly the drift this endpoint now repairs.
  */
 async function run() {
   const apiKey = process.env.FOOTBALL_API_KEY
@@ -40,7 +48,8 @@ async function run() {
       if (error) return NextResponse.json({ error: `upsert: ${error.message}` }, { status: 500 })
     }
 
-    // Score what is now scoreable. Finished matches only, unscored predictions only.
+    // The scoreable universe: finished matches with a score. Every prediction on one of these
+    // is (re)checked below against the score the API currently reports.
     const { data: finished, error: fErr } = await db
       .from('ucl_matches')
       .select('id, home_score, away_score')
@@ -50,12 +59,14 @@ async function run() {
 
     const finishedIds = (finished ?? []).map((m) => m.id)
     let scored = 0
+    let corrected = 0
 
     if (finishedIds.length > 0) {
-      const { data: pending, error: pErr } = await db
+      // Every prediction on a finished match — not just the unscored ones — so a revised score
+      // can re-score predictions that were already given points.
+      const { data: preds, error: pErr } = await db
         .from('ucl_predictions')
-        .select('id, match_id, home_goals, away_goals')
-        .is('points', null)
+        .select('id, match_id, home_goals, away_goals, points')
         .in('match_id', finishedIds)
       if (pErr) return NextResponse.json({ error: `predictions: ${pErr.message}` }, { status: 500 })
 
@@ -63,21 +74,27 @@ async function run() {
         (finished ?? []).map((m) => [m.id, { home: m.home_score, away: m.away_score }])
       )
 
-      for (const p of pending ?? []) {
+      for (const p of preds ?? []) {
         const actual = scoreByMatch.get(p.match_id)
         if (!actual) continue
         const points = pointsFor(actual.home, actual.away, p.home_goals, p.away_goals)
         if (points === null) continue
+        // Write only when the value actually changes: no-op re-runs make no writes, and a
+        // corrected score rewrites exactly the affected rows.
+        if (points === p.points) continue
+        const wasScored = p.points !== null
         const { error: uErr } = await db.from('ucl_predictions').update({ points }).eq('id', p.id)
         if (uErr) {
           results.push(`FOUT bij voorspelling ${p.id}: ${uErr.message}`)
           continue
         }
-        scored++
+        if (wasScored) corrected++
+        else scored++
       }
     }
 
     results.push(scored > 0 ? `${scored} voorspellingen gescoord` : 'geen nieuwe voorspellingen te scoren')
+    if (corrected > 0) results.push(`${corrected} voorspellingen gecorrigeerd na een gewijzigde uitslag`)
     return NextResponse.json({ ok: true, results })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
