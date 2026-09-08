@@ -80,6 +80,39 @@ function Wedstrijden() {
     }
   }, [])
 
+  // Keep the screen live while it matters. A match being played, or one that has just finished
+  // but whose predictions the sync has not scored yet, is the only time ucl_matches changes on
+  // its own — so that is the only time we poll. On every other day this effect does nothing.
+  const shouldPoll = useMemo(() => {
+    if (matches.some((m) => m.status === 'IN_PLAY' || m.status === 'PAUSED')) return true
+    const finishedIds = new Set(
+      matches.filter((m) => m.status === 'FINISHED').map((m) => m.id)
+    )
+    return predictions.some((p) => p.points == null && finishedIds.has(p.match_id))
+  }, [matches, predictions])
+
+  // Refresh scores and points without disturbing which matchdays are open (openKeys is left
+  // untouched) or flashing the skeleton (loading stays false). Because shouldPoll is a boolean,
+  // a poll that changes the data but not the liveness leaves this interval running as-is.
+  useEffect(() => {
+    if (!shouldPoll) return
+    let alive = true
+    const tick = async () => {
+      const [matchRes, predictionRes] = await Promise.all([
+        supabase.from('ucl_matches').select('*').order('utc_kickoff', { ascending: true }),
+        supabase.from('ucl_predictions').select('user_id, match_id, home_goals, away_goals, points'),
+      ])
+      if (!alive) return
+      if (!matchRes.error) setMatches((matchRes.data ?? []) as UclMatch[])
+      if (!predictionRes.error) setPredictions((predictionRes.data ?? []) as UclPrediction[])
+    }
+    const id = setInterval(() => void tick(), 30_000)
+    return () => {
+      alive = false
+      clearInterval(id)
+    }
+  }, [shouldPoll])
+
   // Matchdays that still have something unplayed. Finished matches inside such a matchday are
   // kept, so a half-played matchday shows all of its matches instead of a gappy list.
   const groups = useMemo(() => {
