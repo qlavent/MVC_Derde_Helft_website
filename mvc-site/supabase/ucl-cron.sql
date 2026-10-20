@@ -64,23 +64,20 @@ begin
     where exists (
       select 1 from public.ucl_matches
       where
-        -- being played right now (PAUSED is half-time)
-        status in ('IN_PLAY', 'PAUSED')
-        -- or we still think it is SCHEDULED/TIMED but its kickoff is anywhere from 15 minutes
-        -- ahead to 5 hours ago. The upper bound picks up late kickoff changes before a match;
-        -- the lower bound is the important fix: once kickoff passes, our row stays 'TIMED' until
-        -- a sync flips it to IN_PLAY, and a window of only [now, now+15m] slams shut exactly at
-        -- kickoff — so a match that starts between two cron ticks never gets re-checked and
-        -- freezes at 'TIMED' (never going live, never finishing, never scoring). Keeping it in
-        -- the net for 5 hours after kickoff guarantees the SCHEDULED/TIMED -> IN_PLAY -> FINISHED
-        -- transitions are caught.
-        or (status in ('SCHEDULED', 'TIMED')
-            and utc_kickoff between now() - interval '5 hours' and now() + interval '15 minutes')
-        -- or just finished, so the scoring pass gets a few more chances at it. There is no
-        -- finished_at column, so kickoff is the proxy: 90 minutes plus stoppage, half-time and
-        -- (in the knockouts) extra time and penalties puts the final whistle at roughly
-        -- kickoff + 2h30. Five hours after kickoff therefore still covers a match that ended
-        -- within the last ~3 hours, which is what a late final needs.
+        -- Anything not settled yet whose kickoff is near or recently past: ONE time-based
+        -- window that covers the pre-kickoff heads-up, the whole in-play period, and any stuck
+        -- intermediate state — whatever our cached status happens to say. This is deliberately
+        -- driven by kickoff time, not by our status field: trusting status is what let a match
+        -- freeze at 'TIMED' when the scheduled->in-play sync landed between two cron ticks, after
+        -- which no window re-checked it. "Started (or about to) and not yet FINISHED" keeps
+        -- syncing it all the way to the final whistle. The 6-hour lower bound comfortably covers
+        -- extra time and penalties, and caps runaway polling of a match that never resolves (an
+        -- abandonment or a bad feed) — the twice-daily job is the backstop for those.
+        (status <> 'FINISHED'
+            and utc_kickoff between now() - interval '6 hours' and now() + interval '15 minutes')
+        -- or just finished, so a late score correction is still picked up and re-scored. Kickoff
+        -- is the proxy for "recently finished": 5 hours still covers a match that ended within
+        -- the last ~2h30, which is what a late final needs.
         or (status = 'FINISHED' and utc_kickoff > now() - interval '5 hours')
     );
   $f$, base || '/api/ucl/sync', 'Bearer ' || secret);
