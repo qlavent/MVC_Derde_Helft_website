@@ -3,10 +3,12 @@ import { supabaseServer } from '@/lib/supabase'
 import { syncRbfa } from '@/lib/rbfa.mjs'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
-// RBFA's datalake sits behind Akamai, which blocks requests from US datacenter IPs (Vercel's
-// default). Pin this function to Frankfurt so the call leaves from an EU address, which the
-// Belgian FA's edge is far more likely to allow.
+// RBFA's datalake sits behind Akamai, which blocks requests from Vercel's US serverless IP
+// (iad1) — region pinning needs Vercel Pro, so on Hobby the serverless function is stuck there.
+// The Edge runtime egresses from a different network and runs near the caller (EU), which the
+// Belgian FA's edge is far more likely to allow. If this still gets "Access Denied", the sync
+// has to run from an allowed IP instead (see the scripts/ fallback).
+export const runtime = 'edge'
 export const preferredRegion = 'fra1'
 
 async function run() {
