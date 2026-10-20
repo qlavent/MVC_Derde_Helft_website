@@ -21,14 +21,38 @@ const RBFA_API = 'https://datalake-prod2018.rbfa.be/graphql'
 
 export const CLUB_ID = '9143' // MVC DEN DERDE HELFT
 
+// RBFA moved the datalake behind Akamai, which answers any request that does not look like it
+// came from the RBFA website with a 200 + an HTML "Access Denied" page. That HTML is what made
+// the whole sync fail with "Unexpected token '<'" when res.json() met it. Sending the site's
+// Origin and Referer is what gets JSON back; Akamai gates on those, not on the User-Agent. The
+// browser-like UA is kept only because every request that works in practice carries one.
+const RBFA_HEADERS = {
+  'Content-Type': 'application/json',
+  Origin: 'https://www.rbfa.be',
+  Referer: 'https://www.rbfa.be/',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+}
+
 export async function rbfaQuery(query) {
   const res = await fetch(RBFA_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: RBFA_HEADERS,
     body: JSON.stringify({ query }),
     cache: 'no-store',
   })
-  const json = await res.json()
+  // Read as text first: when Akamai (or any edge) blocks the call it returns HTML, not JSON, and
+  // a bare res.json() would throw a cryptic "Unexpected token '<'". Fail with the real reason so
+  // the next breakage is obvious in the sync report instead of a parser error.
+  const body = await res.text()
+  let json
+  try {
+    json = JSON.parse(body)
+  } catch {
+    throw new Error(
+      `RBFA did not return JSON (status ${res.status}). First bytes: ${body.slice(0, 120).replace(/\s+/g, ' ')}`
+    )
+  }
   if (json.errors) throw new Error(JSON.stringify(json.errors))
   return json.data
 }
