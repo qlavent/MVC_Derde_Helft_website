@@ -3,6 +3,11 @@ import { supabaseServer } from '@/lib/supabase'
 import { fetchMatches, toRow } from '@/lib/ucl/api.mjs'
 import { pointsFor } from '@/lib/ucl/score.mjs'
 
+// toRow comes from an untyped .mjs; these name the shape we rely on when merging against the
+// existing rows so the strict build is happy.
+type PrevRow = { id: number; status: string; home_score: number | null; away_score: number | null }
+type UclRow = PrevRow & { [k: string]: unknown }
+
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
@@ -35,16 +40,37 @@ async function run() {
 
   try {
     const raw = await fetchMatches(apiKey)
-    const rows = raw.map(toRow)
+    const rows = raw.map(toRow) as UclRow[]
     results.push(`${rows.length} wedstrijden opgehaald`)
 
     if (rows.length > 0) {
-      const { error } = await db
+      // football-data's free tier intermittently serves a just-finished match back as TIMED with
+      // null scores. Upserting that verbatim walks a FINISHED result back to "upcoming" and blanks
+      // the score, which also makes its predictions unscoreable again (pointsFor returns null on a
+      // null score). So merge against what we already have: never downgrade a FINISHED match, and
+      // never replace a score we hold with null. A genuine correction — a NEW non-null score — is
+      // still applied. (The RBFA sync has carried this same "never walk a result backwards" rule
+      // from the start; the UCL sync was missing it.)
+      const { data: existing, error: exErr } = await db
         .from('ucl_matches')
-        .upsert(
-          rows.map((r: Record<string, unknown>) => ({ ...r, synced_at: new Date().toISOString() })),
-          { onConflict: 'id' }
-        )
+        .select('id, status, home_score, away_score')
+      if (exErr) return NextResponse.json({ error: `read matches: ${exErr.message}` }, { status: 500 })
+      const prev = new Map((existing ?? []).map((m: PrevRow) => [m.id, m]))
+
+      const stamp = new Date().toISOString()
+      const merged = rows.map((r) => {
+        const p = prev.get(r.id)
+        if (!p) return { ...r, synced_at: stamp }
+        return {
+          ...r,
+          status: p.status === 'FINISHED' && r.status !== 'FINISHED' ? 'FINISHED' : r.status,
+          home_score: r.home_score ?? p.home_score,
+          away_score: r.away_score ?? p.away_score,
+          synced_at: stamp,
+        }
+      })
+
+      const { error } = await db.from('ucl_matches').upsert(merged, { onConflict: 'id' })
       if (error) return NextResponse.json({ error: `upsert: ${error.message}` }, { status: 500 })
     }
 
