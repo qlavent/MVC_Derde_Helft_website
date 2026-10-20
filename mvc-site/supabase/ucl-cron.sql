@@ -66,10 +66,16 @@ begin
       where
         -- being played right now (PAUSED is half-time)
         status in ('IN_PLAY', 'PAUSED')
-        -- or kicking off within the quarter hour: picks up late kickoff changes and the
-        -- SCHEDULED/TIMED -> IN_PLAY transition promptly
+        -- or we still think it is SCHEDULED/TIMED but its kickoff is anywhere from 15 minutes
+        -- ahead to 5 hours ago. The upper bound picks up late kickoff changes before a match;
+        -- the lower bound is the important fix: once kickoff passes, our row stays 'TIMED' until
+        -- a sync flips it to IN_PLAY, and a window of only [now, now+15m] slams shut exactly at
+        -- kickoff — so a match that starts between two cron ticks never gets re-checked and
+        -- freezes at 'TIMED' (never going live, never finishing, never scoring). Keeping it in
+        -- the net for 5 hours after kickoff guarantees the SCHEDULED/TIMED -> IN_PLAY -> FINISHED
+        -- transitions are caught.
         or (status in ('SCHEDULED', 'TIMED')
-            and utc_kickoff between now() and now() + interval '15 minutes')
+            and utc_kickoff between now() - interval '5 hours' and now() + interval '15 minutes')
         -- or just finished, so the scoring pass gets a few more chances at it. There is no
         -- finished_at column, so kickoff is the proxy: 90 minutes plus stoppage, half-time and
         -- (in the knockouts) extra time and penalties puts the final whistle at roughly
