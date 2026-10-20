@@ -4,6 +4,10 @@ import { syncRbfa } from '@/lib/rbfa.mjs'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
+// RBFA's datalake sits behind Akamai, which blocks requests from US datacenter IPs (Vercel's
+// default). Pin this function to Frankfurt so the call leaves from an EU address, which the
+// Belgian FA's edge is far more likely to allow.
+export const preferredRegion = 'fra1'
 
 async function run() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
