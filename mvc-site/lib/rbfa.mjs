@@ -28,10 +28,18 @@ export const CLUB_ID = '9143' // MVC DEN DERDE HELFT
 // browser-like UA is kept only because every request that works in practice carries one.
 const RBFA_HEADERS = {
   'Content-Type': 'application/json',
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'nl-BE,nl;q=0.9,en;q=0.8',
   Origin: 'https://www.rbfa.be',
   Referer: 'https://www.rbfa.be/',
   'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'same-site',
 }
 
 export async function rbfaQuery(query) {
